@@ -1,39 +1,44 @@
-import type { Resume } from "@cvtuner/core";
+import { docLabels, localizeDate, type Resume } from "@cvtuner/core";
 import { Document, Font, Link, Page, StyleSheet, Text, View, pdf } from "@react-pdf/renderer";
-import type { LayoutOptions } from "./options";
-
-const ACCENT = "#1f3a5f";
+import { TEMPLATES, type DocStyle, type LayoutOptions, type Theme } from "./options";
 
 // no mid-word hyphenation: it looks odd on a resume and splits keywords that ATS parsers look for
 Font.registerHyphenationCallback((word) => [word]);
 
-function styles(o: LayoutOptions) {
+function styles(o: LayoutOptions, t: Theme) {
   return StyleSheet.create({
-    page: { padding: o.margin, fontFamily: "Helvetica", fontSize: o.fontSize, lineHeight: o.lineHeight, color: "#1a1a1a" },
-    name: { fontSize: o.fontSize * 2, fontFamily: "Helvetica-Bold", color: ACCENT, lineHeight: 1.1 },
+    page: { padding: o.margin, fontFamily: t.font, fontSize: o.fontSize, lineHeight: o.lineHeight, color: "#1a1a1a" },
+    header: { textAlign: t.align, ...(t.heading === "bar" ? { borderLeftWidth: 4, borderLeftColor: t.accent, paddingLeft: 10 } : {}) },
+    name: { fontSize: o.fontSize * 2, fontFamily: t.bold, color: t.accent, lineHeight: 1.1 },
     label: { fontSize: o.fontSize * 1.1, marginTop: 2, color: "#333" },
     contact: { marginTop: 3, fontSize: o.fontSize * 0.92, color: "#444" },
     section: { marginTop: o.gap * 1.4 },
-    h2: {
-      fontFamily: "Helvetica-Bold", fontSize: o.fontSize * 1.05, color: ACCENT, textTransform: "uppercase",
-      letterSpacing: 0.6, borderBottomWidth: 0.75, borderBottomColor: ACCENT, paddingBottom: 1.5, marginBottom: o.gap * 0.6,
-    },
+    h2:
+      t.heading === "bar"
+        ? { fontFamily: t.bold, fontSize: o.fontSize * 1.05, color: t.accent, textTransform: "uppercase", letterSpacing: 0.6, borderLeftWidth: 3, borderLeftColor: t.accent, paddingLeft: 6, marginBottom: o.gap * 0.6 }
+        : {
+            fontFamily: t.bold, fontSize: o.fontSize * 1.05, color: t.accent, textTransform: "uppercase", letterSpacing: 0.6,
+            borderBottomWidth: 0.75, borderBottomColor: t.accent, paddingBottom: 1.5, marginBottom: o.gap * 0.6,
+            textAlign: t.align,
+          },
     entry: { marginBottom: o.gap * 0.7 },
     row: { flexDirection: "row", justifyContent: "space-between" },
-    bold: { fontFamily: "Helvetica-Bold" },
+    bold: { fontFamily: t.bold },
     muted: { color: "#555" },
     bullet: { flexDirection: "row", marginTop: 1 },
     dot: { width: o.fontSize * 0.9 },
     bulletText: { flex: 1 },
+    para: { marginBottom: o.gap },
   });
 }
 
-const dates = (a?: string, b?: string) => [a, b].filter(Boolean).join(" – ");
-
-export function ResumeDocument({ resume, layout }: { resume: Resume; layout: LayoutOptions }) {
-  const s = styles(layout);
+export function ResumeDocument({ resume, layout, style = {} }: { resume: Resume; layout: LayoutOptions; style?: DocStyle }) {
+  const theme = TEMPLATES[style.template ?? "classic"];
+  const L = docLabels(style.lang);
+  const s = styles(layout, theme);
   const b = resume.basics;
   const contact = [b.email, b.phone, b.location, b.url].filter(Boolean);
+  const dates = (a?: string, c?: string) => [localizeDate(a, L), localizeDate(c, L)].filter(Boolean).join(" – ");
   const Bullets = ({ items }: { items: string[] }) => (
     <>
       {items.map((h, i) => (
@@ -47,29 +52,31 @@ export function ResumeDocument({ resume, layout }: { resume: Resume; layout: Lay
   return (
     <Document title={`${b.name || "Resume"}`} author={b.name} creator="CVTuner" producer="CVTuner">
       <Page size="A4" style={s.page}>
-        <Text style={s.name}>{b.name}</Text>
-        {b.label ? <Text style={s.label}>{b.label}</Text> : null}
-        {contact.length ? (
-          <Text style={s.contact}>
-            {contact.map((c, i) => (
-              <Text key={i}>
-                {i ? "  |  " : ""}
-                {/^https?:|\.com|\.in|\.io/.test(c!) && !c!.includes("@") ? <Link src={c!.startsWith("http") ? c! : `https://${c}`}>{c}</Link> : c}
-              </Text>
-            ))}
-          </Text>
-        ) : null}
+        <View style={s.header}>
+          <Text style={s.name}>{b.name}</Text>
+          {b.label ? <Text style={s.label}>{b.label}</Text> : null}
+          {contact.length ? (
+            <Text style={s.contact}>
+              {contact.map((c, i) => (
+                <Text key={i}>
+                  {i ? "  |  " : ""}
+                  {/^https?:|\.com|\.in|\.io/.test(c!) && !c!.includes("@") ? <Link src={c!.startsWith("http") ? c! : `https://${c}`}>{c}</Link> : c}
+                </Text>
+              ))}
+            </Text>
+          ) : null}
+        </View>
 
         {b.summary ? (
           <View style={s.section}>
-            <Text style={s.h2}>Summary</Text>
+            <Text style={s.h2}>{L.summary}</Text>
             <Text>{b.summary}</Text>
           </View>
         ) : null}
 
         {resume.skills.some((g) => g.keywords.length) ? (
           <View style={s.section}>
-            <Text style={s.h2}>Skills</Text>
+            <Text style={s.h2}>{L.skills}</Text>
             {resume.skills.filter((g) => g.keywords.length).map((g) => (
               <Text key={g.id}>
                 {resume.skills.length > 1 ? <Text style={s.bold}>{g.name}: </Text> : null}
@@ -81,7 +88,7 @@ export function ResumeDocument({ resume, layout }: { resume: Resume; layout: Lay
 
         {resume.work.length ? (
           <View style={s.section}>
-            <Text style={s.h2}>Experience</Text>
+            <Text style={s.h2}>{L.experience}</Text>
             {resume.work.map((w) => (
               <View key={w.id} style={s.entry}>
                 <View style={s.row} wrap={false} minPresenceAhead={30}>
@@ -101,7 +108,7 @@ export function ResumeDocument({ resume, layout }: { resume: Resume; layout: Lay
 
         {resume.projects.length ? (
           <View style={s.section}>
-            <Text style={s.h2}>Projects</Text>
+            <Text style={s.h2}>{L.projects}</Text>
             {resume.projects.map((p) => (
               <View key={p.id} style={s.entry}>
                 <Text style={s.bold}>{p.name}</Text>
@@ -114,7 +121,7 @@ export function ResumeDocument({ resume, layout }: { resume: Resume; layout: Lay
 
         {resume.education.length ? (
           <View style={s.section}>
-            <Text style={s.h2}>Education</Text>
+            <Text style={s.h2}>{L.education}</Text>
             {resume.education.map((e) => (
               <View key={e.id} style={[s.row, s.entry]} wrap={false}>
                 <Text>
@@ -130,7 +137,7 @@ export function ResumeDocument({ resume, layout }: { resume: Resume; layout: Lay
 
         {resume.certificates.length ? (
           <View style={s.section}>
-            <Text style={s.h2}>Certifications</Text>
+            <Text style={s.h2}>{L.certifications}</Text>
             <Bullets items={resume.certificates} />
           </View>
         ) : null}
@@ -140,8 +147,8 @@ export function ResumeDocument({ resume, layout }: { resume: Resume; layout: Lay
 }
 
 /** Renders to PDF bytes. Works in the browser and in Node. */
-export async function renderPdf(resume: Resume, layout: LayoutOptions): Promise<Uint8Array> {
-  const blob = await pdf(<ResumeDocument resume={resume} layout={layout} />).toBlob();
+export async function renderPdf(resume: Resume, layout: LayoutOptions, style?: DocStyle): Promise<Uint8Array> {
+  const blob = await pdf(<ResumeDocument resume={resume} layout={layout} style={style} />).toBlob();
   return new Uint8Array(await blob.arrayBuffer());
 }
 

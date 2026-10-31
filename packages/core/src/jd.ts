@@ -149,6 +149,8 @@ function detectProperTerms(text: string): string[] {
 
 export interface ParseJdOptions {
   extraTerms?: string[];
+  /** skip action-phrase extraction (the slow part) when only keywords are needed */
+  phrases?: boolean;
 }
 
 export function parseJd(raw: string, opts: ParseJdOptions = {}): ParsedJd {
@@ -177,7 +179,7 @@ export function parseJd(raw: string, opts: ParseJdOptions = {}): ParsedJd {
       if (![...known].some((k) => k.includes(p.toLowerCase()) || p.toLowerCase().includes(k))) add(p, item.section, false);
     }
 
-    if (item.section === "other") continue;
+    if (item.section === "other" || opts.phrases === false) continue;
     const action = toActionPhrase(item.text);
     if (action) {
       phrases.push({

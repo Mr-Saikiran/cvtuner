@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   title: "CVTuner by TechSwitch",
   description: "Tune your resume to any job description. Rule-based or AI. Exports PDF and Word, always within 2 pages.",
   manifest: "/cvtuner/manifest.webmanifest",
-  icons: { icon: "/cvtuner/icon.svg" },
+  icons: { icon: "/cvtuner/icon.svg", apple: "/cvtuner/icon-192.png" },
 };
 
 export const viewport: Viewport = {

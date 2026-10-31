@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Send to CVTuner",
+  "version": "1.0.0",
+  "description": "Send the job description you are reading to CVTuner and tune your resume for it.",
+  "permissions": ["activeTab", "scripting", "contextMenus"],
+  "action": {
+    "default_title": "Send this job to CVTuner",
+    "default_icon": { "16": "icons/16.png", "48": "icons/48.png", "128": "icons/128.png" }
+  },
+  "icons": { "16": "icons/16.png", "48": "icons/48.png", "128": "icons/128.png" },
+  "background": { "service_worker": "background.js" }
+}

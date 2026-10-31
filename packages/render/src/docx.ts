@@ -1,8 +1,7 @@
-import type { Resume } from "@cvtuner/core";
+import { docLabels, localizeDate, type Resume } from "@cvtuner/core";
 import { AlignmentType, BorderStyle, Document, ExternalHyperlink, LevelFormat, Packer, Paragraph, TabStopType, TextRun } from "docx";
-import { PAGE, type LayoutOptions } from "./options";
+import { PAGE, TEMPLATES, type DocStyle, type LayoutOptions } from "./options";
 
-const ACCENT = "1F3A5F";
 const pt = (n: number) => Math.round(n * 2); // docx sizes are half-points
 const twip = (n: number) => Math.round(n * 20); // twentieths of a point
 
@@ -10,7 +9,11 @@ const twip = (n: number) => Math.round(n * 20); // twentieths of a point
  * Builds a .docx with the same content, fonts and margins as the PDF.
  * Single column, real text, no tables or text boxes — safe for ATS parsers.
  */
-export function buildDocx(resume: Resume, layout: LayoutOptions): Document {
+export function buildDocx(resume: Resume, layout: LayoutOptions, style: DocStyle = {}): Document {
+  const theme = TEMPLATES[style.template ?? "classic"];
+  const ACCENT = theme.accent.replace("#", "").toUpperCase();
+  const L = docLabels(style.lang);
+  const align = theme.align === "center" ? AlignmentType.CENTER : AlignmentType.LEFT;
   const size = pt(layout.fontSize);
   const line = Math.round(240 * layout.lineHeight);
   const contentWidth = twip(PAGE.width - layout.margin * 2);
@@ -20,7 +23,11 @@ export function buildDocx(resume: Resume, layout: LayoutOptions): Document {
   const heading = (text: string) =>
     new Paragraph({
       spacing: { before: twip(layout.gap * 1.4), after: twip(layout.gap * 0.6) },
-      border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: ACCENT, space: 1 } },
+      alignment: align,
+      border:
+        theme.heading === "bar"
+          ? { left: { style: BorderStyle.SINGLE, size: 18, color: ACCENT, space: 4 } }
+          : { bottom: { style: BorderStyle.SINGLE, size: 6, color: ACCENT, space: 1 } },
       children: [new TextRun({ text: text.toUpperCase(), bold: true, color: ACCENT, size: pt(layout.fontSize * 1.05), characterSpacing: 12 })],
     });
   const bullet = (text: string) =>
@@ -32,12 +39,12 @@ export function buildDocx(resume: Resume, layout: LayoutOptions): Document {
       tabStops: [{ type: TabStopType.RIGHT, position: contentWidth }],
       children: [...left, ...(right ? [new TextRun({ text: `\t${right}`, size, color: "555555" })] : [])],
     });
-  const dates = (a?: string, c?: string) => [a, c].filter(Boolean).join(" – ");
+  const dates = (a?: string, c?: string) => [localizeDate(a, L), localizeDate(c, L)].filter(Boolean).join(" – ");
 
   children.push(
-    new Paragraph({ children: [new TextRun({ text: b.name, bold: true, color: ACCENT, size: pt(layout.fontSize * 2) })] }),
+    new Paragraph({ alignment: align, children: [new TextRun({ text: b.name, bold: true, color: ACCENT, size: pt(layout.fontSize * 2) })] }),
   );
-  if (b.label) children.push(new Paragraph({ children: [new TextRun({ text: b.label, size: pt(layout.fontSize * 1.1), color: "333333" })] }));
+  if (b.label) children.push(new Paragraph({ alignment: align, children: [new TextRun({ text: b.label, size: pt(layout.fontSize * 1.1), color: "333333" })] }));
   const contact = [b.email, b.phone, b.location].filter(Boolean) as string[];
   if (contact.length || b.url) {
     const runs: (TextRun | ExternalHyperlink)[] = [new TextRun({ text: contact.join("  |  "), size: pt(layout.fontSize * 0.92), color: "444444" })];
@@ -45,15 +52,15 @@ export function buildDocx(resume: Resume, layout: LayoutOptions): Document {
       runs.push(new TextRun({ text: contact.length ? "  |  " : "", size: pt(layout.fontSize * 0.92), color: "444444" }));
       runs.push(new ExternalHyperlink({ link: b.url.startsWith("http") ? b.url : `https://${b.url}`, children: [new TextRun({ text: b.url, size: pt(layout.fontSize * 0.92), style: "Hyperlink" })] }));
     }
-    children.push(new Paragraph({ spacing: { before: 60 }, children: runs }));
+    children.push(new Paragraph({ alignment: align, spacing: { before: 60 }, children: runs }));
   }
 
   if (b.summary) {
-    children.push(heading("Summary"), new Paragraph({ spacing: { line }, children: [new TextRun({ text: b.summary, size })] }));
+    children.push(heading(L.summary), new Paragraph({ spacing: { line }, children: [new TextRun({ text: b.summary, size })] }));
   }
   const groups = resume.skills.filter((g) => g.keywords.length);
   if (groups.length) {
-    children.push(heading("Skills"));
+    children.push(heading(L.skills));
     for (const g of groups) {
       children.push(
         new Paragraph({
@@ -67,7 +74,7 @@ export function buildDocx(resume: Resume, layout: LayoutOptions): Document {
     }
   }
   if (resume.work.length) {
-    children.push(heading("Experience"));
+    children.push(heading(L.experience));
     for (const w of resume.work) {
       children.push(
         rowWithDate(
@@ -84,7 +91,7 @@ export function buildDocx(resume: Resume, layout: LayoutOptions): Document {
     }
   }
   if (resume.projects.length) {
-    children.push(heading("Projects"));
+    children.push(heading(L.projects));
     for (const p of resume.projects) {
       children.push(rowWithDate([new TextRun({ text: p.name, bold: true, size })]));
       if (p.description) children.push(new Paragraph({ spacing: { line }, children: [new TextRun({ text: p.description, size })] }));
@@ -92,7 +99,7 @@ export function buildDocx(resume: Resume, layout: LayoutOptions): Document {
     }
   }
   if (resume.education.length) {
-    children.push(heading("Education"));
+    children.push(heading(L.education));
     for (const e of resume.education) {
       const degree = [e.studyType, e.area].filter(Boolean).join(", ");
       children.push(
@@ -108,14 +115,14 @@ export function buildDocx(resume: Resume, layout: LayoutOptions): Document {
     }
   }
   if (resume.certificates.length) {
-    children.push(heading("Certifications"));
+    children.push(heading(L.certifications));
     resume.certificates.forEach((c) => children.push(bullet(c)));
   }
 
   return new Document({
     creator: "CVTuner",
     title: b.name || "Resume",
-    styles: { default: { document: { run: { font: "Arial", size } } } },
+    styles: { default: { document: { run: { font: theme.docxFont, size } } } },
     numbering: {
       config: [
         {
@@ -138,6 +145,6 @@ export function buildDocx(resume: Resume, layout: LayoutOptions): Document {
   });
 }
 
-export async function renderDocx(resume: Resume, layout: LayoutOptions): Promise<Blob> {
-  return Packer.toBlob(buildDocx(resume, layout));
+export async function renderDocx(resume: Resume, layout: LayoutOptions, style?: DocStyle): Promise<Blob> {
+  return Packer.toBlob(buildDocx(resume, layout, style));
 }

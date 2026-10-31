@@ -2,17 +2,19 @@
 
 import { useState } from "react";
 import { isProfileEmpty, useJobs, useProfile, useSettings, type SavedJob } from "@/lib/store";
+import { BoardsView } from "./BoardsView";
 import { HistoryView } from "./HistoryView";
 import { ProfileView } from "./ProfileView";
 import { SettingsView } from "./SettingsView";
 import { TailorView } from "./TailorView";
 
-type Tab = "tune" | "profile" | "saved" | "settings";
+type Tab = "tune" | "profile" | "jobs" | "saved" | "settings";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "tune", label: "Tune" },
   { id: "profile", label: "Profile" },
-  { id: "saved", label: "Saved" },
+  { id: "jobs", label: "Jobs" },
+  { id: "saved", label: "Tracker" },
   { id: "settings", label: "Settings" },
 ];
 
@@ -63,6 +65,7 @@ export function App() {
             settings={settings}
             setSettings={setSettings}
             openJob={openJob}
+            onOpenSettings={() => setTab("settings")}
             onSave={(job) => {
               setJobs((prev) => [job, ...prev.filter((j) => j.id !== job.id)]);
               setOpenJob(job);
@@ -78,6 +81,16 @@ export function App() {
               setTab("tune");
             }}
             onDelete={(id) => setJobs((prev) => prev.filter((j) => j.id !== id))}
+            onUpdate={(job) => setJobs((prev) => prev.map((j) => (j.id === job.id ? job : j)))}
+          />
+        )}
+        {tab === "jobs" && (
+          <BoardsView
+            profile={profile}
+            onTune={() => {
+              setOpenJob(null);
+              setTab("tune");
+            }}
           />
         )}
         {tab === "settings" && <SettingsView settings={settings} setSettings={setSettings} />}
@@ -85,7 +98,7 @@ export function App() {
 
       {/* bottom tab bar on phones */}
       <nav
-        className="surface fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-x-0 border-b-0 pb-[env(safe-area-inset-bottom)] sm:hidden"
+        className="surface fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-x-0 border-b-0 pb-[env(safe-area-inset-bottom)] sm:hidden"
         aria-label="Main"
       >
         {TABS.map((t) => (

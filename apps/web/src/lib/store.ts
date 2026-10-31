@@ -1,12 +1,53 @@
 "use client";
 
-import { emptyResume, parseResume, type Resume, type Suggestion, type Voice } from "@cvtuner/core";
+import { emptyResume, parseResume, type JobPosting, type ProviderId, type Resume, type Suggestion, type Voice } from "@cvtuner/core";
 import { useCallback, useEffect, useState } from "react";
+
+export type TemplateId = "classic" | "modern" | "serif";
+
+export interface AiSettings {
+  provider: ProviderId;
+  /** chosen model per provider */
+  models: Partial<Record<ProviderId, string>>;
+  /** API keys per provider, kept on this device only */
+  keys: Partial<Record<ProviderId, string>>;
+  customBaseUrl: string;
+}
 
 export interface Settings {
   voice: Voice;
   /** 2 = strict two pages; 3 = allow up to three when content needs it */
   maxPages: 2 | 3;
+  /** which engine writes the changes */
+  engine: "rules" | "ai";
+  template: TemplateId;
+  /** document language code */
+  lang: string;
+  tone: "formal" | "friendly";
+  ai: AiSettings;
+}
+
+export const DEFAULT_SETTINGS: Settings = {
+  voice: "passive",
+  maxPages: 2,
+  engine: "rules",
+  template: "classic",
+  lang: "en",
+  tone: "formal",
+  ai: { provider: "gemini", models: {}, keys: {}, customBaseUrl: "http://localhost:11434/v1" },
+};
+
+export type JobStatus = "saved" | "applied" | "interview" | "offer" | "rejected";
+
+export interface WatchedBoard {
+  id: string;
+  url: string;
+  name: string;
+  lastChecked?: number;
+  /** posting ids already seen, to flag new ones */
+  seen: string[];
+  jobs: (JobPosting & { score: number; missing: string[]; isNew: boolean })[];
+  error?: string;
 }
 
 export interface SavedJob {
@@ -19,9 +60,25 @@ export interface SavedJob {
   confirmedSkills: string[];
   suggestions: Suggestion[];
   score: number;
+  status?: JobStatus;
+  /** which engine produced the saved suggestions */
+  engine?: "rules" | "ai";
+  coverLetter?: string[];
+  url?: string;
+  appliedAt?: number;
+  notes?: string;
 }
 
-const KEYS = { profile: "cvtuner.profile.v1", jobs: "cvtuner.jobs.v1", settings: "cvtuner.settings.v1", draft: "cvtuner.draft.v1" };
+const KEYS = {
+  profile: "cvtuner.profile.v1",
+  jobs: "cvtuner.jobs.v1",
+  settings: "cvtuner.settings.v1",
+  draft: "cvtuner.draft.v1",
+  boards: "cvtuner.boards.v1",
+};
+
+/** Hand-off slot for text shared from another app or the browser extension. */
+export const INCOMING_KEY = "cvtuner.incoming.v1";
 
 function read<T>(key: string, fallback: T): T {
   try {
@@ -72,7 +129,9 @@ export const useProfile = () =>
     }
   });
 export const useJobs = () => usePersisted<SavedJob[]>(KEYS.jobs, []);
-export const useSettings = () => usePersisted<Settings>(KEYS.settings, { voice: "passive", maxPages: 2 });
+export const useSettings = () =>
+  usePersisted<Settings>(KEYS.settings, DEFAULT_SETTINGS, (v) => ({ ...DEFAULT_SETTINGS, ...v, ai: { ...DEFAULT_SETTINGS.ai, ...v?.ai } }));
+export const useBoards = () => usePersisted<WatchedBoard[]>(KEYS.boards, []);
 export const useDraftJd = () => usePersisted<string>(KEYS.draft, "");
 
 export function isProfileEmpty(r: Resume): boolean {

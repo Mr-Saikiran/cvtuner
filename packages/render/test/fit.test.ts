@@ -40,3 +40,24 @@ describe("docx", () => {
     expect(buf.subarray(0, 2).toString()).toBe("PK");
   });
 });
+
+describe("templates, languages and cover letter", () => {
+  it("renders every template in another language", async () => {
+    const { TEMPLATES } = await import("../src");
+    for (const id of Object.keys(TEMPLATES) as ("classic" | "modern" | "serif")[]) {
+      const pdf = await renderPdf(sampleResume(), DENSITY[0]!, { template: id, lang: "de" });
+      expect(countPdfPages(pdf)).toBe(1);
+      const docx = await Packer.toBuffer(buildDocx(sampleResume(), DENSITY[0]!, { template: id, lang: "de" }));
+      expect(docx.length).toBeGreaterThan(1000);
+    }
+  }, 60000);
+
+  it("renders a one page cover letter", async () => {
+    const { renderLetterPdf, buildLetterDocx } = await import("../src");
+    const { ruleCoverLetter, tailor, SAMPLE_JD } = await import("@cvtuner/core");
+    const r = sampleResume();
+    const letter = ruleCoverLetter(r, tailor(r, SAMPLE_JD).keywords, { jobTitle: "Lead", company: "Acme" });
+    expect(countPdfPages(await renderLetterPdf(letter, r, { template: "modern" }))).toBe(1);
+    expect((await Packer.toBuffer(buildLetterDocx(letter, r))).subarray(0, 2).toString()).toBe("PK");
+  }, 30000);
+});

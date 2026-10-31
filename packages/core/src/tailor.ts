@@ -16,7 +16,7 @@ export type Suggestion =
   | { id: string; kind: "add-bullet"; targetId: string; targetLabel: string; text: string; source: string; keywords: string[]; accepted: boolean }
   | { id: string; kind: "add-skills"; skills: string[]; accepted: boolean }
   | { id: string; kind: "reorder-skills"; order: string[]; accepted: boolean }
-  | { id: string; kind: "summary"; text: string; accepted: boolean };
+  | { id: string; kind: "summary"; text: string; accepted: boolean; /** replace the summary instead of appending */ replace?: boolean };
 
 export interface TailorOptions {
   voice?: Voice;
@@ -188,7 +188,7 @@ export function applySuggestions(resume: Resume, suggestions: Suggestion[]): Res
         break;
       }
       case "summary": {
-        out.basics.summary = [out.basics.summary?.trim(), s.text].filter(Boolean).join(" ");
+        out.basics.summary = s.replace ? s.text : [out.basics.summary?.trim(), s.text].filter(Boolean).join(" ");
         break;
       }
     }
@@ -247,4 +247,16 @@ export function dropBullets(resume: Resume, ordered: BulletRef[], count: number)
 
 export function removableBulletCount(resume: Resume): number {
   return [...resume.work, ...resume.projects].reduce((n, e) => n + Math.max(0, e.highlights.length - 1), 0);
+}
+
+/** Fast keyword-coverage score (0–100) for ranking many postings, e.g. a watched job board. */
+export function matchScore(resume: Resume, jdText: string, confirmedSkills: string[] = []): { score: number; missing: string[] } {
+  const jd = parseJd(jdText, { phrases: false });
+  const text = resumeText(resume);
+  const confirmed = new Set(confirmedSkills.map((s) => s.toLowerCase()));
+  const has = (n: string) => containsTerm(text, n) || confirmed.has(n.toLowerCase());
+  return {
+    score: weightedScore(jd.keywords, has),
+    missing: jd.keywords.filter((k) => k.known && !has(k.name)).slice(0, 6).map((k) => k.name),
+  };
 }

@@ -1,5 +1,5 @@
 import { bulletPriorities, dropBullets, removableBulletCount, type Resume } from "@cvtuner/core";
-import { DENSITY, type LayoutOptions } from "./options";
+import { DENSITY, type DocStyle, type LayoutOptions } from "./options";
 import { countPdfPages, renderPdf } from "./pdf";
 
 export interface FitOptions {
@@ -11,6 +11,8 @@ export interface FitOptions {
   keywords?: string[];
   /** bullet texts that must be kept if at all possible (e.g. accepted tailored bullets) */
   protect?: string[];
+  /** template and document language */
+  style?: DocStyle;
 }
 
 export interface FitResult {
@@ -23,7 +25,7 @@ export interface FitResult {
   metTarget: boolean;
 }
 
-type Renderer = (resume: Resume, layout: LayoutOptions) => Promise<Uint8Array>;
+type Renderer = (resume: Resume, layout: LayoutOptions, style?: DocStyle) => Promise<Uint8Array>;
 
 /**
  * Fits the resume into `targetPages` (2 by default) and never exceeds `maxPages` (3).
@@ -38,7 +40,7 @@ export async function fitToPages(resume: Resume, opts: FitOptions = {}, render: 
 
   const attempt = async (drop: number, layout: LayoutOptions) => {
     const r = drop ? dropBullets(resume, order, drop) : resume;
-    const pdf = await render(r, layout);
+    const pdf = await render(r, layout, opts.style);
     return { resume: r, layout, pdf, pages: countPdfPages(pdf), droppedBullets: drop };
   };
 

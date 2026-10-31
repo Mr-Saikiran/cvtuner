@@ -1,7 +1,7 @@
 "use client";
 
 import type { Resume } from "@cvtuner/core";
-import type { FitResult } from "@cvtuner/render";
+import type { DocStyle, FitResult } from "@cvtuner/render";
 import { useEffect, useRef, useState } from "react";
 import { downloadBlob, fileBase } from "@/lib/files";
 import { Badge, Button, Card } from "./ui";
@@ -13,17 +13,18 @@ interface Props {
   protect: string[];
   title?: string;
   company?: string;
+  style?: DocStyle;
 }
 
 /** Renders the tuned resume in the browser, fitted to the page limit, and offers PDF/DOCX downloads. */
-export function Preview({ resume, maxPages, keywords, protect, title, company }: Props) {
+export function Preview({ resume, maxPages, keywords, protect, title, company, style }: Props) {
   const [fit, setFit] = useState<FitResult | null>(null);
   const [url, setUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const run = useRef(0);
 
-  const key = JSON.stringify([resume, maxPages, keywords, protect]);
+  const key = JSON.stringify([resume, maxPages, keywords, protect, style]);
   useEffect(() => {
     const id = ++run.current;
     setBusy(true);
@@ -31,7 +32,7 @@ export function Preview({ resume, maxPages, keywords, protect, title, company }:
       try {
         const { fitToPages } = await import("@cvtuner/render");
         // 2 pages is the target; "Up to 3" lets content run to 3 instead of trimming to 2
-        const res = await fitToPages(resume, { targetPages: maxPages, maxPages, keywords, protect });
+        const res = await fitToPages(resume, { targetPages: maxPages, maxPages, keywords, protect, style });
         if (id !== run.current) return;
         setFit(res);
         setError(null);
@@ -56,7 +57,7 @@ export function Preview({ resume, maxPages, keywords, protect, title, company }:
   const downloadDocx = async () => {
     if (!fit) return;
     const { renderDocx } = await import("@cvtuner/render");
-    downloadBlob(await renderDocx(fit.resume, fit.layout), `${base}.docx`);
+    downloadBlob(await renderDocx(fit.resume, fit.layout, style), `${base}.docx`);
   };
 
   return (
