@@ -25,7 +25,7 @@ import { AtsCard } from "./AtsCard";
 import { CoverLetterCard } from "./CoverLetterCard";
 import { JdHighlight } from "./JdHighlight";
 import { Preview } from "./Preview";
-import { Badge, Button, Card, ScoreRing, Segmented } from "./ui";
+import { Badge, Button, Card, Score, Segmented } from "./ui";
 
 interface Props {
   profile: Resume;
@@ -54,7 +54,7 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave, on
   const [overrides, setOverrides] = useState<Record<string, Override>>({});
   const [jobId, setJobId] = useState<string | null>(null);
   const [mode, setMode] = useState<"edit" | "highlight">("edit");
-  const [mobilePane, setMobilePane] = useState<"changes" | "preview" | "letter">("changes");
+  const [mobilePane, setMobilePane] = useState<"changes" | "preview" | "letter">("preview");
   const [link, setLink] = useState("");
   const [linkMeta, setLinkMeta] = useState<{ url?: string; title?: string; company?: string }>({});
   const [linkState, setLinkState] = useState<{ busy: boolean; error?: string }>({ busy: false });
@@ -234,6 +234,7 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave, on
   };
 
   const covered = result?.keywords.filter((k) => k.coverage === "covered") ?? [];
+  const words = draft.trim() ? draft.trim().split(/\s+/).length : 0;
   const missing = result?.keywords.filter((k) => k.coverage === "missing") ?? [];
   const style = { template: settings.template, lang: settings.lang, boldMetrics: settings.boldMetrics };
   const ats = useMemo(
@@ -242,8 +243,8 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave, on
   );
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-      <div className="flex min-w-0 flex-col gap-4">
+    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-8">
+      <div className="flex min-w-0 flex-col gap-6">
         <Card
           title="Job description"
           actions={
@@ -255,15 +256,11 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave, on
                   onChange={setMode}
                   options={[
                     { value: "edit", label: "Edit" },
-                    { value: "highlight", label: "Highlights" },
+                    { value: "highlight", label: "Marked" },
                   ]}
                 />
               ) : null}
-              {!draft ? (
-                <Button variant="ghost" onClick={() => setDraft(SAMPLE_JD)}>
-                  Try a sample
-                </Button>
-              ) : null}
+              {words ? <span className="code text-muted">{words} words</span> : <span className="text-muted text-xs">nothing pasted yet</span>}
             </>
           }
         >
@@ -278,7 +275,7 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave, on
               className="field"
               type="url"
               inputMode="url"
-              placeholder="Job link — Greenhouse, Lever, Ashby, Workable, company career pages…"
+              placeholder="Job link: Greenhouse, Lever, Ashby, Workable or a company career page"
               value={link}
               onChange={(e) => setLink(e.target.value)}
               aria-label="Job link"
@@ -288,36 +285,45 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave, on
             </Button>
           </form>
           {linkState.error ? (
-            <p className="mb-3 rounded-lg bg-amber-500/10 p-2.5 text-sm text-amber-800 dark:text-amber-300" role="alert">
+            <p className="bg-warn-soft border-warn mb-3 border-l-2 px-3 py-2 text-sm" role="alert">
               {linkState.error}
             </p>
           ) : null}
           {mode === "edit" || !result ? (
             <textarea
-              className="field min-h-[260px] resize-y font-mono text-[13px] leading-relaxed lg:min-h-[340px]"
-              placeholder="…or paste the full job description here — responsibilities, requirements, nice-to-haves. Any field works: nursing, finance, sales, software…"
+              className="field min-h-[280px] resize-y text-sm leading-relaxed lg:min-h-[360px]"
+              placeholder="Or paste the full job description here: responsibilities, requirements, nice-to-haves. Any field works: nursing, finance, sales, software."
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               aria-label="Job description"
             />
           ) : (
-            <JdHighlight text={analyzed} keywords={result.keywords} />
+            <>
+              <JdHighlight text={analyzed} keywords={result.keywords} />
+              {/* the marking is not colour alone: say what each one means */}
+              <p className="text-muted border-rule mt-2 flex flex-wrap gap-x-4 gap-y-1 border-t pt-2 text-xs">
+                <span>
+                  <mark className="kw-covered">In your resume</mark>
+                </span>
+                <span>
+                  <mark className="kw-missing">Missing</mark>
+                </span>
+                <span>
+                  <mark className="kw-confirmed">Confirmed</mark>
+                </span>
+              </p>
+            </>
           )}
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-            <span className="muted text-xs">
-              {draft.trim() ? `${draft.trim().split(/\s+/).length} words` : "Nothing pasted yet"}
-              {" · "}
-              {useAi ? (
-                <button type="button" className="text-brand-600 hover:underline" onClick={onOpenSettings}>
-                  AI: {providerInfo(settings.ai.provider).name}
-                </button>
-              ) : (
-                <button type="button" className="hover:underline" onClick={onOpenSettings}>
-                  Rule engine{settings.engine === "ai" ? " (add an AI key in Settings)" : ""}
-                </button>
-              )}
-            </span>
-            <div className="flex gap-2">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+            <button type="button" className="text-muted text-xs underline-offset-2 hover:underline" onClick={onOpenSettings}>
+              {useAi ? `Writing with ${providerInfo(settings.ai.provider).name}` : `Rule engine${settings.engine === "ai" ? ", add an AI key in Settings" : ""}`}
+            </button>
+            <div className="flex flex-wrap gap-2">
+              {!draft ? (
+                <Button variant="ghost" onClick={() => setDraft(SAMPLE_JD)}>
+                  Try a sample
+                </Button>
+              ) : null}
               {draft ? (
                 <Button
                   variant="ghost"
@@ -337,7 +343,8 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave, on
                   Clear
                 </Button>
               ) : null}
-              <Button variant="primary" onClick={analyze} disabled={!draft.trim() || aiState.busy}>
+              {/* the fill moves to the download once there is something to download */}
+              <Button variant={result ? "secondary" : "primary"} onClick={analyze} disabled={!draft.trim() || aiState.busy} aria-busy={aiState.busy}>
                 {aiState.busy ? "AI is writing…" : analyzed && analyzed === draft ? "Re-tune" : "Tune my resume"}
               </Button>
             </div>
@@ -346,32 +353,38 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave, on
 
         {result ? (
           <Card title="Match">
-            <div className="flex flex-wrap items-center gap-6">
-              <ScoreRing value={result.score} label={<>Keyword match<br />before tuning</>} />
-              {result.projectedScore > result.score ? <ScoreRing value={result.projectedScore} label="After tuning" /> : null}
+            <div className="flex flex-wrap items-end gap-8">
+              <Score value={result.score} label="Keyword match, before tuning" />
+              {result.projectedScore > result.score ? <Score value={result.projectedScore} label="After tuning" /> : null}
               <div className="min-w-0 flex-1 text-sm">
                 {title ? <p className="font-medium">{title}</p> : null}
-                {company ? <p className="muted">{company}</p> : null}
+                {company ? <p className="text-muted">{company}</p> : null}
                 {linkMeta.url ? (
-                  <a href={linkMeta.url} target="_blank" rel="noreferrer" className="text-xs text-brand-600 hover:underline">
-                    Open job posting ↗
+                  <a href={linkMeta.url} target="_blank" rel="noreferrer" className="text-muted text-xs">
+                    Open the posting ↗
                   </a>
                 ) : null}
               </div>
             </div>
             {covered.length ? (
-              <div className="mt-4">
-                <p className="muted mb-1.5 text-xs font-medium uppercase tracking-wide">You have</p>
+              <div className="border-rule mt-6 border-t pt-4">
+                <p className="text-muted mb-2 text-xs font-medium">
+                  In your resume <span className="code">{covered.length}</span>
+                </p>
                 <div className="flex flex-wrap gap-1.5">
                   {covered.map((k) => (
-                    <Badge key={k.name} tone="good">{k.name}</Badge>
+                    <span key={k.name} className="chip">
+                      {k.name}
+                    </span>
                   ))}
                 </div>
               </div>
             ) : null}
             {missing.length ? (
-              <div className="mt-4">
-                <p className="muted mb-1.5 text-xs font-medium uppercase tracking-wide">Missing from your resume — tap the ones you really have</p>
+              <div className="border-rule mt-5 border-t pt-4">
+                <p className="text-muted mb-2 text-xs font-medium">
+                  Missing from your resume <span className="code">{missing.length}</span>. Tap the ones you really have.
+                </p>
                 <div className="flex flex-wrap gap-1.5">
                   {missing.map((k) => (
                     <button
@@ -380,17 +393,18 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave, on
                       onClick={() => toggleConfirm(k)}
                       aria-pressed={k.confirmed}
                       title={autoEvidence[k.name] ? `Auto-confirmed. ${autoEvidence[k.name]} Tap to undo.` : undefined}
-                      className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors ${
-                        k.confirmed ? "border-amber-500 bg-amber-500/15 text-amber-700 dark:text-amber-400" : "border-red-500/40 text-red-700 hover:bg-red-500/10 dark:text-red-400"
-                      }`}
+                      className={`chip ${k.confirmed ? "chip--confirmed" : "chip--missing"}`}
                     >
-                      {k.confirmed ? (autoEvidence[k.name] ? "auto ✓ " : "✓ ") : "+ "}
+                      <span className="code" aria-hidden>
+                        {k.confirmed ? "✓" : "+"}
+                      </span>
                       {k.name}
+                      {autoEvidence[k.name] ? <span className="code text-muted">auto</span> : null}
                     </button>
                   ))}
                 </div>
-                <p className="muted mt-2 text-xs">
-                  {settings.skillConfirm === "auto" ? "Auto mode confirms only skills a line of your resume proves — hover to see it, tap to undo. " : ""}
+                <p className="text-muted mt-3 text-xs">
+                  {settings.skillConfirm === "auto" ? "Auto mode confirms only skills a line of your resume proves. Hover to see the line, tap to undo. " : ""}
                   CVTuner never adds a skill that isn&apos;t confirmed.{useAi && aiCurrent ? " Re-run AI after confirming skills." : ""}</p>
               </div>
             ) : null}
@@ -399,11 +413,12 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave, on
         {ats ? <AtsCard report={ats} /> : null}
       </div>
 
-      <div className="flex min-w-0 flex-col gap-4">
+      <div className="flex min-w-0 flex-col gap-6">
         {result ? (
           <>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <span className="text-muted text-xs">Sentence voice</span>
                 <Segmented
                   label="Sentence voice"
                   value={settings.voice}
@@ -416,6 +431,7 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave, on
                     { value: "active", label: "Action verbs" },
                   ]}
                 />
+                <span className="text-muted text-xs">Page limit</span>
                 <Segmented
                   label="Page limit"
                   value={settings.maxPages}
@@ -435,16 +451,19 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave, on
                 value={mobilePane}
                 onChange={setMobilePane}
                 options={[
-                  { value: "changes", label: `Changes (${suggestions.filter((s) => s.accepted).length})` },
                   { value: "preview", label: "Resume" },
-                  { value: "letter", label: "Cover letter" },
+                  { value: "changes", label: `Changes ${suggestions.filter((s) => s.accepted).length}` },
+                  { value: "letter", label: "Letter" },
                 ]}
               />
             </div>
 
+            <div className={mobilePane === "preview" ? "" : "hidden lg:block"}>
+              <Preview resume={tuned} maxPages={settings.maxPages} keywords={keywords} protect={protect} title={title} company={company} style={style} onPages={setPages} />
+            </div>
             <div className={mobilePane === "changes" ? "" : "hidden lg:block"}>
               {aiState.error ? (
-                <p className="mb-3 rounded-lg bg-amber-500/10 p-2.5 text-sm text-amber-800 dark:text-amber-300" role="alert">
+                <p className="mb-3 bg-warn-soft p-2.5 text-sm text-ink" role="alert">
                   {aiState.error}
                 </p>
               ) : null}
@@ -457,9 +476,6 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave, on
                 busy={aiState.busy}
                 onRerunAi={useAi ? () => void runAi(analyzed) : undefined}
               />
-            </div>
-            <div className={mobilePane === "preview" ? "" : "hidden lg:block"}>
-              <Preview resume={tuned} maxPages={settings.maxPages} keywords={keywords} protect={protect} title={title} company={company} style={style} onPages={setPages} />
             </div>
             <div className={mobilePane === "letter" ? "" : "hidden lg:block"}>
               <CoverLetterCard
@@ -507,7 +523,7 @@ function Changes({
     <Card
       title={
         <span className="flex items-center gap-2">
-          Changes {aiLabel ? <Badge tone="brand">AI · {aiLabel}</Badge> : <Badge>Rule engine</Badge>}
+          Changes {aiLabel ? <Badge tone="brand">AI, {aiLabel.replace(" · ", " ")}</Badge> : <Badge>Rule engine</Badge>}
         </span>
       }
       actions={
@@ -516,51 +532,50 @@ function Changes({
             {busy ? "Writing…" : aiLabel ? "Re-run AI" : "Write with AI"}
           </Button>
         ) : (
-          <span className="muted text-xs">Untick anything you don&apos;t want</span>
+          <span className="text-muted text-xs">Untick anything you don&apos;t want</span>
         )
       }
     >
-      {staleVoice ? <p className="mb-3 text-sm text-amber-700 dark:text-amber-400">You changed the voice — re-run AI to rewrite these lines.</p> : null}
+      {staleVoice ? <p className="text-warn mb-3 text-sm">You changed the voice. Re-run AI to rewrite these lines.</p> : null}
       {!suggestions.length ? (
-        <p className="muted text-sm">No safe changes found. Add more detail to your profile, or confirm missing skills you actually have.</p>
+        <p className="text-muted text-sm">No safe changes found. Add more detail to your profile, or confirm missing skills you actually have.</p>
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ul className="flex flex-col">
           {bullets.map((s) =>
             s.kind === "add-bullet" ? (
-              <li key={keyOf(s)} className={`rounded-xl border p-3 ${s.accepted ? "border-green-500/40 bg-green-500/5" : "border-[var(--border)] opacity-60"}`}>
-                <div className="flex items-start gap-3">
-                  <input type="checkbox" className="mt-1 size-4 accent-[var(--color-brand-600)]" checked={s.accepted} onChange={(e) => onChange(s, { accepted: e.target.checked })} aria-label="Include this line" />
-                  <div className="min-w-0 flex-1">
-                    <p className="muted mb-1 text-xs">
-                      <span className="font-medium text-green-700 dark:text-green-400">+ New line</span> in {s.targetLabel}
-                    </p>
-                    <textarea className="field min-h-[3.5rem] resize-y text-sm" value={s.text} onChange={(e) => onChange(s, { text: e.target.value })} aria-label="Edit the new line" />
-                    <p className="muted mt-1 truncate text-xs" title={s.source}>
-                      From JD: “{s.source}”
-                    </p>
-                  </div>
+              <li key={keyOf(s)} className={`border-rule flex items-start gap-3 border-b py-4 first:pt-0 ${s.accepted ? "" : "opacity-55"}`}>
+                <input type="checkbox" className="mt-1" checked={s.accepted} onChange={(e) => onChange(s, { accepted: e.target.checked })} aria-label="Include this line" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-muted mb-1.5 text-xs">
+                    {/* core joins position and company with a middle dot; the page uses "at" */}
+                    New line in <span className="text-ink font-medium">{s.targetLabel.replace(" · ", " at ")}</span>
+                  </p>
+                  <textarea className="field min-h-[3.5rem] resize-y text-sm" value={s.text} onChange={(e) => onChange(s, { text: e.target.value })} aria-label="Edit the new line" />
+                  <p className="text-muted mt-1.5 truncate text-xs" title={s.source}>
+                    From JD: “{s.source}”
+                  </p>
                 </div>
               </li>
             ) : null,
           )}
           {other.map((s) => (
-            <li key={keyOf(s)} className={`rounded-xl border p-3 ${s.accepted ? "border-brand-500/40 bg-brand-500/5" : "border-[var(--border)] opacity-60"}`}>
+            <li key={keyOf(s)} className={`border-rule border-b py-4 last:border-b-0 ${s.accepted ? "" : "opacity-55"}`}>
               <label className="flex items-start gap-3">
-                <input type="checkbox" className="mt-1 size-4 accent-[var(--color-brand-600)]" checked={s.accepted} onChange={(e) => onChange(s, { accepted: e.target.checked })} />
+                <input type="checkbox" className="mt-0.5" checked={s.accepted} onChange={(e) => onChange(s, { accepted: e.target.checked })} />
                 <span className="min-w-0 flex-1 text-sm">
                   {s.kind === "reorder-skills" && (
                     <>
-                      <span className="font-medium">Reorder skills</span> so the ones in this JD come first: <span className="muted">{s.order.slice(0, 6).join(", ")}…</span>
+                      <span className="font-medium">Put this job&apos;s skills first:</span> <span className="text-muted">{s.order.slice(0, 6).join(", ")}…</span>
                     </>
                   )}
                   {s.kind === "add-skills" && (
                     <>
-                      <span className="font-medium">Add confirmed skills:</span> {s.skills.join(", ")}
+                      <span className="font-medium">Add confirmed skills at the top:</span> {s.skills.join(", ")}
                     </>
                   )}
                   {s.kind === "summary" && (
                     <>
-                      <span className="font-medium">{s.replace ? "Replace summary with:" : "Add to summary:"}</span> <span className="muted">{s.text}</span>
+                      <span className="font-medium">{s.replace ? "Replace summary with:" : "Add to summary:"}</span> <span className="text-muted">{s.text}</span>
                     </>
                   )}
                 </span>
@@ -571,13 +586,13 @@ function Changes({
       )}
       {rejected.length ? (
         <details className="mt-3 text-sm">
-          <summary className="muted cursor-pointer text-xs">
+          <summary className="text-muted cursor-pointer text-xs">
             {rejected.length} AI line{rejected.length > 1 ? "s" : ""} removed by the truth check
           </summary>
           <ul className="mt-2 flex flex-col gap-1.5">
             {rejected.map((r, i) => (
-              <li key={i} className="muted text-xs">
-                <span className="line-through">{r.text}</span> — {r.reason}
+              <li key={i} className="text-muted text-xs">
+                <span className="line-through">{r.text}</span>: {r.reason}
               </li>
             ))}
           </ul>
@@ -587,27 +602,29 @@ function Changes({
   );
 }
 
+/** What belongs in this column, and the one action that fills it. Steps hung from hairlines. */
 function EmptyState() {
   const steps = [
     ["1", "Paste a job description or link", "Any role, any field. Links from Greenhouse, Lever, Ashby, Workable and most career pages are fetched for you."],
-    ["2", "Review the changes", "Lines are matched to your real experience — by the rule engine, or by the AI provider you pick in Settings. Edit or untick anything."],
-    ["3", "Download resume and cover letter", "PDF or Word, fitted to 2 pages (3 at most), in three ATS-safe templates."],
+    ["2", "Review the changes", "Lines are matched to your real experience by the rule engine, or by the AI provider you pick in Settings. Edit or untick anything."],
+    ["3", "Download resume and cover letter", "PDF or Word, fitted to 2 pages (3 at most), in eight templates."],
   ];
   return (
-    <Card>
-      <h2 className="mb-4 text-lg font-semibold">Tune your resume for each job in a minute</h2>
-      <ol className="flex flex-col gap-4">
+    <Card title="Tune your resume for each job in a minute">
+      <ol className="flex flex-col">
         {steps.map(([n, t, d]) => (
-          <li key={n} className="flex gap-3">
-            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-brand-600 text-sm font-semibold text-white">{n}</span>
-            <div>
+          <li key={n} className="border-rule flex gap-4 border-b py-4 first:pt-0 last:border-b-0">
+            <span className="font-display text-section text-muted leading-none font-bold">{n}</span>
+            <div className="min-w-0">
               <p className="font-medium">{t}</p>
-              <p className="muted text-sm">{d}</p>
+              <p className="text-muted text-sm">{d}</p>
             </div>
           </li>
         ))}
       </ol>
-      <p className="muted mt-5 text-xs">The rule engine runs fully in your browser — no AI key needed. Add a free Gemini, Groq or OpenRouter key in Settings for AI rewriting.</p>
+      <p className="text-muted border-rule mt-4 border-t pt-4 text-xs">
+        The rule engine runs fully in your browser, no AI key needed. Add a free Gemini, Groq or OpenRouter key in Settings for AI rewriting.
+      </p>
     </Card>
   );
 }

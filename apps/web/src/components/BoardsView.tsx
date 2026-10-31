@@ -120,8 +120,8 @@ export function BoardsView({ profile, onTune }: { profile: Resume; onTune: () =>
               {busy && busy !== "all" ? "Checking…" : "Watch board"}
             </Button>
           </form>
-          {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
-          <p className="muted mt-3 text-xs">
+          {error ? <p className="mt-2 text-sm text-warn">{error}</p> : null}
+          <p className="text-muted mt-3 text-xs">
             Works with Greenhouse, Lever, Ashby, SmartRecruiters and Workable boards. Boards are checked when you open this tab (every 6 hours at most), and every posting
             is scored against your profile.
           </p>
@@ -139,7 +139,7 @@ export function BoardsView({ profile, onTune }: { profile: Resume; onTune: () =>
                 <li key={b.id} className="flex items-center justify-between gap-2 text-sm">
                   <div className="min-w-0">
                     <p className="truncate font-medium capitalize">{b.name}</p>
-                    <p className={`truncate text-xs ${b.error ? "text-red-600" : "muted"}`}>
+                    <p className={`truncate text-xs ${b.error ? "text-warn" : "text-muted"}`}>
                       {b.error ?? `${b.jobs.length} open · ${b.lastChecked ? new Date(b.lastChecked).toLocaleString() : "never checked"}`}
                     </p>
                   </div>
@@ -158,7 +158,7 @@ export function BoardsView({ profile, onTune }: { profile: Resume; onTune: () =>
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <input className="field w-40 py-1.5 text-sm" placeholder="Filter title, city" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Filter roles" />
-            <label className="muted flex items-center gap-1 text-xs">
+            <label className="text-muted flex items-center gap-1 text-xs">
               Min match
               <select className="field w-auto py-1 text-xs" value={minScore} onChange={(e) => setMinScore(Number(e.target.value))}>
                 {[0, 30, 50, 70].map((n) => (
@@ -172,9 +172,9 @@ export function BoardsView({ profile, onTune }: { profile: Resume; onTune: () =>
         }
       >
         {!all.length ? (
-          <p className="muted text-sm">{boards.length ? "No roles match the filters." : "Add a company board to see its open roles ranked by how well they match your profile."}</p>
+          <p className="text-muted text-sm">{boards.length ? "No roles match the filters." : "Add a company board to see its open roles ranked by how well they match your profile."}</p>
         ) : (
-          <ul className="flex flex-col divide-y divide-[var(--border)]">
+          <ul className="flex flex-col divide-y divide-rule">
             {all.slice(0, 150).map((j) => (
               <li key={`${j.board}-${j.id ?? j.url}`} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
                 <div className="min-w-0 flex-1">
@@ -182,7 +182,7 @@ export function BoardsView({ profile, onTune }: { profile: Resume; onTune: () =>
                     <span className="truncate">{j.title}</span>
                     {j.isNew ? <Badge tone="brand">New</Badge> : null}
                   </p>
-                  <p className="muted truncate text-xs capitalize">
+                  <p className="text-muted truncate text-xs capitalize">
                     {j.board}
                     {j.location ? ` · ${j.location}` : ""}
                     {j.missing.length ? ` · missing ${j.missing.slice(0, 3).join(", ")}` : ""}
@@ -190,7 +190,7 @@ export function BoardsView({ profile, onTune }: { profile: Resume; onTune: () =>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge tone={j.score >= 70 ? "good" : j.score >= 45 ? "warn" : "bad"}>{j.score}%</Badge>
-                  <a href={j.url} target="_blank" rel="noreferrer" className="muted text-xs hover:underline">
+                  <a href={j.url} target="_blank" rel="noreferrer" className="text-muted text-xs hover:underline">
                     View ↗
                   </a>
                   <Button variant="primary" onClick={() => tune(j.text, j.url, j.title)}>

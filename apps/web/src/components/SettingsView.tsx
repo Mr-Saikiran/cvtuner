@@ -10,9 +10,9 @@ import { Badge, Button, Card, Segmented } from "./ui";
 
 export function SettingsView({ settings, setSettings }: { settings: Settings; setSettings: (s: Settings) => void }) {
   return (
-    <div className="mx-auto grid max-w-3xl gap-4">
+    <div className="mx-auto grid max-w-5xl gap-6">
       <Card title="Writing">
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col">
           <Row label="Sentence voice" hint="Passive: “Vendor contracts were managed.” Action verbs: “Managed vendor contracts.” Recruiters often prefer action verbs.">
             <Segmented
               label="Sentence voice"
@@ -78,7 +78,7 @@ export function SettingsView({ settings, setSettings }: { settings: Settings; se
       </Card>
 
       <Card title="Documents">
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col">
           <div>
             <p className="mb-2 text-sm font-medium">Template</p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -88,16 +88,16 @@ export function SettingsView({ settings, setSettings }: { settings: Settings; se
                   type="button"
                   onClick={() => setSettings({ ...settings, template: t.id })}
                   aria-pressed={settings.template === t.id}
-                  className={`rounded-xl border p-2.5 text-left transition-colors ${settings.template === t.id ? "border-brand-500 bg-brand-500/10" : "border-[var(--border)] hover:border-brand-500/50"}`}
+                  className={` border p-2.5 text-left transition-colors ${settings.template === t.id ? "border-accent bg-accent-soft" : "border-rule hover:border-ink"}`}
                 >
                   <TemplateThumb theme={t} />
                   <p className="mt-2 text-sm font-medium">{t.name}</p>
-                  <p className="muted text-xs">{t.description}</p>
+                  <p className="text-muted text-xs">{t.description}</p>
                   <span className="mt-1 inline-block">{t.singleColumn ? <Badge tone="good">ATS-safe</Badge> : <Badge tone="warn">Sidebar</Badge>}</span>
                 </button>
               ))}
             </div>
-            <p className="muted mt-2 text-xs">
+            <p className="text-muted mt-2 text-xs">
               ATS-safe templates are single column. Sidebar designs look great to people and parse fine in modern ATS; the Word export of every template is single column.
               Photo templates show your photo from the Profile tab.
             </p>
@@ -128,7 +128,7 @@ export function SettingsView({ settings, setSettings }: { settings: Settings; se
       <AiCard settings={settings} setSettings={setSettings} />
 
       <Card title="Your data">
-        <p className="muted text-sm">
+        <p className="text-muted text-sm">
           Your profile, saved versions, watched boards and API keys are stored only in this browser. Imported files are read once and not kept. When you use a
           cloud AI provider, your resume and the job description are sent to that provider through CVTuner&apos;s server, which does not store them or your key.
         </p>
@@ -168,7 +168,7 @@ function AiCard({ settings, setSettings }: { settings: Settings; setSettings: (s
 
   return (
     <Card title={<span className="flex items-center gap-2">AI provider <Badge tone="brand">Advanced</Badge></span>}>
-      <p className="muted mb-3 text-sm">
+      <p className="text-muted mb-3 text-sm">
         Optional. Use your own key from any major provider — several have free tiers. Without a key, CVTuner uses its rule engine. AI suggestions go through the same
         truth check: lines that mention skills you haven&apos;t got are removed.
       </p>
@@ -180,7 +180,7 @@ function AiCard({ settings, setSettings }: { settings: Settings; setSettings: (s
             type="button"
             onClick={() => pick(p.id)}
             aria-pressed={ai.provider === p.id}
-            className={`flex flex-col items-start gap-1 rounded-xl border p-2.5 text-left text-sm transition-colors ${ai.provider === p.id ? "border-brand-500 bg-brand-500/10" : "border-[var(--border)] hover:border-brand-500/50"}`}
+            className={`flex flex-col items-start gap-1 border p-2.5 text-left text-sm transition-colors ${ai.provider === p.id ? "border-accent bg-accent-soft" : "border-rule hover:border-ink"}`}
           >
             <span className="font-medium">{p.name}</span>
             <span className="flex flex-wrap gap-1">
@@ -192,17 +192,17 @@ function AiCard({ settings, setSettings }: { settings: Settings; setSettings: (s
       </div>
 
       <div className="mt-4 flex flex-col gap-3">
-        {info.note ? <p className="muted text-xs">{info.note}</p> : null}
+        {info.note ? <p className="text-muted text-xs">{info.note}</p> : null}
         {info.direct ? (
           <label className="flex flex-col gap-1 text-sm">
-            <span className="muted text-xs font-medium">Server URL (OpenAI-compatible)</span>
+            <span className="text-muted text-xs font-medium">Server URL (OpenAI-compatible)</span>
             <input className="field" value={ai.customBaseUrl} onChange={(e) => setAi({ customBaseUrl: e.target.value })} placeholder="http://localhost:11434/v1" />
           </label>
         ) : null}
         <label className="flex flex-col gap-1 text-sm">
-          <span className="muted flex items-center justify-between text-xs font-medium">
+          <span className="text-muted flex items-center justify-between text-xs font-medium">
             API key {info.direct ? "(optional)" : ""}
-            <a href={info.keyUrl} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">
+            <a href={info.keyUrl} target="_blank" rel="noreferrer" className="text-accent hover:underline">
               Get a {info.name} key ↗
             </a>
           </span>
@@ -217,7 +217,7 @@ function AiCard({ settings, setSettings }: { settings: Settings; setSettings: (s
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          <span className="muted text-xs font-medium">Model</span>
+          <span className="text-muted text-xs font-medium">Model</span>
           <input
             className="field font-mono"
             list="cvtuner-models"
@@ -230,7 +230,7 @@ function AiCard({ settings, setSettings }: { settings: Settings; setSettings: (s
               <option key={m} value={m} />
             ))}
           </datalist>
-          <span className="muted text-xs">Leave empty for {info.defaultModel}. “Test” loads the full list from the provider.</span>
+          <span className="text-muted text-xs">Leave empty for {info.defaultModel}. “Test” loads the full list from the provider.</span>
         </label>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="primary" onClick={test} disabled={busy || (!info.direct && !ai.keys[ai.provider])}>
@@ -252,11 +252,11 @@ function AiCard({ settings, setSettings }: { settings: Settings; setSettings: (s
           />
         </div>
         {status ? (
-          <p className={`text-sm ${status.tone === "good" ? "text-green-700 dark:text-green-400" : status.tone === "bad" ? "text-red-600" : "muted"}`} role="status">
+          <p className={`text-sm ${status.tone === "good" ? "text-ink" : status.tone === "bad" ? "text-warn" : "text-muted"}`} role="status">
             {status.text}
           </p>
         ) : null}
-        <p className="muted text-xs">Keys are saved in this browser only. Anyone using this browser profile can see them — remove them on shared computers.</p>
+        <p className="text-muted text-xs">Keys are saved in this browser only. Anyone using this browser profile can see them — remove them on shared computers.</p>
       </div>
     </Card>
   );
@@ -269,7 +269,7 @@ function TemplateThumb({ theme: t }: { theme: Theme }) {
   const mainX = sb?.side === "left" ? 22 : 5;
   const mainW = sb ? 34 : 50;
   return (
-    <svg viewBox="0 0 60 44" className="h-16 w-full rounded border border-black/5 bg-white" aria-hidden>
+    <svg viewBox="0 0 60 44" className="sheet border-rule h-16 w-full border" aria-hidden>
       {sb ? <rect x={sx} y="0" width="18" height="44" fill={sb.bg === "#ffffff" ? "#f8f8f8" : sb.bg} /> : null}
       {t.band ? <rect x="0" y="0" width="60" height="11" fill={t.band.bg} /> : null}
       {t.photo ? <circle cx={sb?.side === "left" ? 8 : 9} cy="5.5" r="3.6" fill="#c7cdd6" /> : null}
@@ -294,10 +294,10 @@ function TemplateThumb({ theme: t }: { theme: Theme }) {
 
 function Row({ label, hint, children }: { label: string; hint: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div className="border-rule flex flex-col gap-3 border-b py-4 first:pt-0 last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
       <div className="max-w-md">
         <p className="text-sm font-medium">{label}</p>
-        <p className="muted text-xs">{hint}</p>
+        <p className="text-muted text-xs">{hint}</p>
       </div>
       {children}
     </div>

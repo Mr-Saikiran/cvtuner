@@ -113,6 +113,16 @@ export function parseResumeText(raw: string): Resume {
         break;
     }
   }
+  // sidebar layouts put contact details before the name, so the first short line can be a
+  // heading like "CONTACT" or a city. If the email names the person, prefer the line that matches it.
+  const emailParts = (resume.basics.email?.split("@")[0] ?? "").toLowerCase().split(/[._-]+/).filter((p) => p.length >= 3);
+  const nameLike = (l: string) => /^[\p{L}][\p{L}.' -]{1,60}$/u.test(l) && l.split(" ").length <= 5 && !headerOf(l);
+  const matchesEmail = (l: string) => emailParts.some((p) => l.toLowerCase().split(/[\s.'-]+/).includes(p));
+  if (emailParts.length && !(resume.basics.name && matchesEmail(resume.basics.name))) {
+    const better = lines.find((l) => nameLike(l) && matchesEmail(l));
+    if (better) resume.basics.name = better;
+  }
+  if (/^(contact|contact details|details|personal details)$/i.test(resume.basics.name)) resume.basics.name = "";
   resume.basics.summary = summary.join(" ") || undefined;
   if (skillWords.length) resume.skills.push({ id: newId("skill"), name: "Skills", keywords: [...new Set(skillWords)] });
   return resume;

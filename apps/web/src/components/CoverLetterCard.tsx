@@ -85,8 +85,8 @@ export function CoverLetterCard({ resume, jd, keywords, gaps, title, company, se
         </>
       }
     >
-      {error ? <p className="mb-2 text-sm text-red-600">{error}</p> : null}
-      <p className="muted mb-2 text-xs">
+      {error ? <p className="mb-2 text-sm text-warn">{error}</p> : null}
+      <p className="text-muted mb-2 text-xs">
         {letter.greeting} … {letter.closing} {letter.signature} are added automatically. Edit the body freely.
       </p>
       <textarea

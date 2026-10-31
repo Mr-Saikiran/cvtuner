@@ -6,3 +6,11 @@ dist
 *.tsbuildinfo
 .env*.local
 coverage
+
+# Hallmark: keep the log, ignore the captures
+.hallmark/before/
+.hallmark/shots/
+.hallmark/*.txt
+.hallmark/*.json
+!.hallmark/log.json
+.hallmark/compare.html

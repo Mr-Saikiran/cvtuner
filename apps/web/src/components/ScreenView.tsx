@@ -64,10 +64,10 @@ export function ScreenView() {
     <div className="grid gap-4 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
       <div className="flex flex-col gap-4">
         <Card title={<span className="flex items-center gap-2">Screen candidates <Badge tone="brand">Recruiter</Badge></span>}>
-          <p className="muted mb-3 text-sm">A simple ATS: upload resumes, paste the job description, and candidates are ranked by how well they match.</p>
+          <p className="text-muted mb-3 text-sm">A simple ATS: upload resumes, paste the job description, and candidates are ranked by how well they match.</p>
           <textarea className="field min-h-40 text-[13px]" placeholder="Paste the job description" value={jd} onChange={(e) => setJd(e.target.value)} aria-label="Job description for screening" />
           <label className="mt-3 flex flex-col gap-1 text-sm">
-            <span className="muted text-xs font-medium">Must-have skills (comma separated, optional)</span>
+            <span className="text-muted text-xs font-medium">Must-have skills (comma separated, optional)</span>
             <input className="field" value={mustHave} onChange={(e) => setMustHave(e.target.value)} placeholder="e.g. SAP, Negotiation" />
           </label>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -97,16 +97,16 @@ export function ScreenView() {
               e.target.value = "";
             }}
           />
-          {progress ? <p className="muted mt-2 text-xs" role="status">{progress}</p> : null}
+          {progress ? <p className="text-muted mt-2 text-xs" role="status">{progress}</p> : null}
           {errors.length ? (
-            <details className="mt-2 text-xs text-red-600">
+            <details className="mt-2 text-xs text-warn">
               <summary>{errors.length} file(s) could not be read</summary>
               {errors.map((e) => (
                 <p key={e}>{e}</p>
               ))}
             </details>
           ) : null}
-          <p className="muted mt-3 text-xs">
+          <p className="text-muted mt-3 text-xs">
             Candidates missing a must-have skill are ranked lower. The resumes are kept only in this tab and are gone when you close it.
           </p>
         </Card>
@@ -117,37 +117,37 @@ export function ScreenView() {
         actions={ranked.length ? <Button onClick={exportCsv}>Export CSV</Button> : undefined}
       >
         {!ranked.length ? (
-          <p className="muted text-sm">{candidates.length ? "Paste a job description to rank the resumes." : "Upload PDF or Word resumes to start."}</p>
+          <p className="text-muted text-sm">{candidates.length ? "Paste a job description to rank the resumes." : "Upload PDF or Word resumes to start."}</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[560px] text-left text-sm">
-              <thead className="muted text-xs">
+          <div>
+            <table className="spec spec--stack text-sm">
+              <thead>
                 <tr>
-                  <th className="py-2 pr-2">#</th>
-                  <th className="py-2 pr-2">Candidate</th>
-                  <th className="py-2 pr-2">Match</th>
-                  <th className="py-2 pr-2">Years</th>
-                  <th className="py-2 pr-2">Missing</th>
-                  <th className="py-2">Shortlist</th>
+                  <th scope="col">#</th>
+                  <th scope="col">Candidate</th>
+                  <th scope="col">Match</th>
+                  <th scope="col">Years</th>
+                  <th scope="col">Missing</th>
+                  <th scope="col">Shortlist</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[var(--border)]">
+              <tbody>
                 {ranked.map((c, i) => (
                   <tr key={c.id}>
-                    <td className="py-2 pr-2 tabular-nums">{i + 1}</td>
-                    <td className="py-2 pr-2">
+                    <td data-label="Rank" className="code">{i + 1}</td>
+                    <td data-label="">
                       <p className="font-medium">{c.name}</p>
-                      <p className="muted text-xs">{[c.headline, c.email].filter(Boolean).join(" · ") || c.fileName}</p>
+                      <p className="text-muted text-xs">{[c.headline, c.email].filter(Boolean).join(" · ") || c.fileName}</p>
                     </td>
-                    <td className="py-2 pr-2">
-                      <Badge tone={c.score >= 70 ? "good" : c.score >= 45 ? "warn" : "bad"}>{c.score}%</Badge>
+                    <td data-label="Match">
+                      <span className={`code ${c.score >= 70 ? "" : c.score >= 45 ? "text-ink-2" : "text-warn"}`}>{c.score}%</span>
                     </td>
-                    <td className="py-2 pr-2 tabular-nums">{c.years || "—"}</td>
-                    <td className="muted py-2 pr-2 text-xs">{c.missing.slice(0, 4).join(", ") || "—"}</td>
-                    <td className="py-2">
+                    <td data-label="Years" className="code">{c.years || "not stated"}</td>
+                    <td data-label="Missing" className="text-muted text-xs">{c.missing.slice(0, 4).join(", ") || "none"}</td>
+                    <td data-label="Shortlist">
                       <input
                         type="checkbox"
-                        className="size-4 accent-[var(--color-brand-600)]"
+                        className="size-4"
                         checked={shortlist.has(c.id)}
                         onChange={(e) =>
                           setShortlist((prev) => {

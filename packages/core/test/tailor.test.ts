@@ -72,6 +72,10 @@ SQL, Python, Tableau, Excel`);
     expect(r.skills[0]!.keywords).toEqual(["SQL", "Python", "Tableau", "Excel"]);
     expect(r.education[0]).toMatchObject({ institution: "State University", area: "BSc Statistics" });
   });
+  it("finds the name in sidebar-first PDFs using the email", () => {
+    const r = parseResumeText(`CONTACT\nasha.rao@example.com\nHyderabad, India\nSKILLS\nSAP, Excel\nAsha Rao\nProcurement Manager\nEXPERIENCE\nBuyer at Acme 2020 - Present\n- Ran sourcing`);
+    expect(r.basics.name).toBe("Asha Rao");
+  });
   it("treats sentence lines without bullet glyphs as highlights", () => {
     const r = parseResumeText(`Sam Lee\nEXPERIENCE\nStaff Nurse | City Hospital  2019 - Present\nMonitored vital signs for 30 patients per shift.\nTrained new nurses on EHR charting.\nEDUCATION\nCity College`);
     expect(r.work).toHaveLength(1);

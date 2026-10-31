@@ -4,7 +4,7 @@ import { countPlaceholders, type Resume } from "@cvtuner/core";
 import type { DocStyle, FitResult } from "@cvtuner/render";
 import { useEffect, useRef, useState } from "react";
 import { downloadBlob, fileBase } from "@/lib/files";
-import { Badge, Button, Card } from "./ui";
+import { Button } from "./ui";
 
 interface Props {
   resume: Resume;
@@ -17,7 +17,10 @@ interface Props {
   onPages?: (pages: number) => void;
 }
 
-/** Renders the tuned resume in the browser, fitted to the page limit, and offers PDF/DOCX downloads. */
+/**
+ * The signature: the real rendered resume on a white plate, captioned in mono the way
+ * the catalogue captions a sample. Renders in the browser, fitted to the page limit.
+ */
 export function Preview({ resume, maxPages, keywords, protect, title, company, style, onPages }: Props) {
   const [fit, setFit] = useState<FitResult | null>(null);
   const [url, setUrl] = useState<string | null>(null);
@@ -63,52 +66,88 @@ export function Preview({ resume, maxPages, keywords, protect, title, company, s
   };
 
   return (
-    <Card
-      title={
-        <span className="flex items-center gap-2">
+    <section className="card">
+      <div className="card-head">
+        <h2>
           Preview
-          {fit ? (
-            <Badge tone={fit.metTarget ? "good" : "warn"}>
-              {fit.pages} / {maxPages} page{maxPages > 1 ? "s" : ""}
-            </Badge>
-          ) : null}
-          {busy ? <span className="muted text-xs font-normal">Updating…</span> : null}
-        </span>
-      }
-      actions={
-        <>
-          <Button variant="primary" disabled={!fit} onClick={() => fit && downloadBlob(new Blob([fit.pdf as BlobPart], { type: "application/pdf" }), `${base}.pdf`)}>
-            PDF
+          {busy ? <span className="text-muted ml-2 text-xs font-normal">updating</span> : null}
+        </h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="primary"
+            disabled={!fit}
+            onClick={() => fit && downloadBlob(new Blob([fit.pdf as BlobPart], { type: "application/pdf" }), `${base}.pdf`)}
+          >
+            Download PDF
           </Button>
           <Button disabled={!fit} onClick={downloadDocx}>
             Word
           </Button>
-        </>
-      }
-    >
-      {fit && fit.droppedBullets > 0 ? (
-        <p className="muted mb-2 text-xs">
-          {fit.droppedBullets} less relevant line{fit.droppedBullets > 1 ? "s were" : " was"} left out to fit {maxPages} pages. Your profile is unchanged.
-        </p>
-      ) : null}
+        </div>
+      </div>
+
       {countPlaceholders(resume) ? (
-        <p className="mb-2 rounded-lg bg-amber-500/10 p-2 text-xs text-amber-800 dark:text-amber-300">
-          {countPlaceholders(resume)} placeholder{countPlaceholders(resume) > 1 ? "s" : ""} like [X%] — replace them with your real numbers in Changes before you send this.
+        <p className="bg-warn-soft border-b border-rule px-4 py-2 text-xs" role="status">
+          <span className="text-warn font-medium">
+            {countPlaceholders(resume)} placeholder{countPlaceholders(resume) > 1 ? "s" : ""} like [X%].
+          </span>{" "}
+          Replace {countPlaceholders(resume) > 1 ? "them" : "it"} with your real numbers in Changes before you send this.
         </p>
       ) : null}
-      {error ? <p className="text-sm text-red-600">Preview failed: {error}</p> : null}
-      {url ? (
+      {error ? (
+        <div className="card-body">
+          <p className="text-sm" role="alert">
+            <span className="text-warn font-medium">The preview did not build.</span> {error}
+          </p>
+          <p className="text-muted mt-1 text-xs">Your profile is unchanged. Edit a line in Changes, or re-tune to try again.</p>
+        </div>
+      ) : url ? (
         <>
-          <iframe src={`${url}#toolbar=0&navpanes=0&view=FitH`} title="Resume preview" className="hidden h-[780px] w-full rounded-lg border border-[var(--border)] bg-white sm:block" />
-          <a href={url} target="_blank" rel="noreferrer" className="block rounded-lg border border-dashed border-[var(--border)] p-6 text-center text-sm font-medium text-brand-600 sm:hidden">
-            Open PDF preview
-          </a>
+          <iframe
+            src={`${url}#toolbar=0&navpanes=0&view=FitH`}
+            title="Resume preview"
+            className="sheet hidden h-[760px] w-full border-0 sm:block"
+          />
+          {/* phones cannot be trusted to render a PDF in a frame, so the sheet is
+              set in type instead of left as an empty box, and opens full screen */}
+          <div className="sheet p-6 sm:hidden">
+            <p className="font-display text-xl leading-tight font-bold">{resume.basics.name || "Your resume"}</p>
+            {resume.basics.label ? <p className="text-sm opacity-70">{resume.basics.label}</p> : null}
+            <p className="border-rule mt-4 border-t pt-3">
+              <a href={url} target="_blank" rel="noreferrer" className="btn">
+                Open the resume
+              </a>
+            </p>
+          </div>
         </>
       ) : (
-        <div className="grid h-60 place-items-center rounded-lg border border-dashed border-[var(--border)]">
-          <span className="muted text-sm">Building preview…</span>
+        <div className="p-4 sm:p-6">
+          <div className="skeleton mx-auto h-[420px] w-full max-w-[480px]" />
+          <p className="text-muted mt-3 text-center text-xs">Building the preview</p>
         </div>
       )}
-    </Card>
+
+      {/* the caption bar: what this sheet is, at one to one */}
+      <div className="plate-caption">
+        <span className="text-muted">
+          {title ?? "Your resume"}
+          {company ? <span className="text-ink"> at {company}</span> : null}
+        </span>
+        <span className="flex items-center gap-3">
+          {fit && fit.droppedBullets > 0 ? (
+            <span className="text-muted">
+              {fit.droppedBullets} less relevant line{fit.droppedBullets > 1 ? "s" : ""} left out
+            </span>
+          ) : null}
+          {fit ? (
+            <span className={`code ${fit.metTarget ? "" : "text-warn"}`}>
+              {fit.pages} / {maxPages} page{maxPages > 1 ? "s" : ""}
+            </span>
+          ) : (
+            <span className="text-muted">fitting to {maxPages} pages</span>
+          )}
+        </span>
+      </div>
+    </section>
   );
 }
