@@ -3,7 +3,8 @@
 import { emptyResume, parseResume, type JobPosting, type ProviderId, type Resume, type Suggestion, type Voice } from "@cvtuner/core";
 import { useCallback, useEffect, useState } from "react";
 
-export type TemplateId = "classic" | "modern" | "serif";
+export type { TemplateId } from "@cvtuner/render";
+import type { TemplateId } from "@cvtuner/render";
 
 export interface AiSettings {
   provider: ProviderId;
@@ -25,6 +26,12 @@ export interface Settings {
   lang: string;
   tone: "formal" | "friendly";
   ai: AiSettings;
+  /** manual: you tap each missing skill you have; auto: CVTuner/AI confirms skills it can prove from your resume */
+  skillConfirm: "manual" | "auto";
+  /** AI adds [X%]-style placeholders where a bullet lacks a number */
+  suggestMetrics: boolean;
+  /** bold numbers and percentages in experience bullets */
+  boldMetrics: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -34,6 +41,9 @@ export const DEFAULT_SETTINGS: Settings = {
   template: "classic",
   lang: "en",
   tone: "formal",
+  skillConfirm: "manual",
+  suggestMetrics: true,
+  boldMetrics: true,
   ai: { provider: "gemini", models: {}, keys: {}, customBaseUrl: "http://localhost:11434/v1" },
 };
 

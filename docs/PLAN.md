@@ -1,6 +1,6 @@
 # CVTuner — JD-driven resume builder (techswitch.in/cvtuner)
 
-Status: **Phase 0 and Phase 1 done** (see "Phase 1 notes" at the end). Phases 2–4 still to do.
+Status: **Phases 0–4 done**, with the exceptions listed in "Not built yet" at the end.
 
 ## 1. Name
 
@@ -149,3 +149,27 @@ cvtuner/                      (monorepo: pnpm + Turborepo)
 - **Skills taxonomy:** a curated cross-domain list (about 500 terms and aliases across software, cloud, data, product, marketing/sales, finance, operations, HR, healthcare, legal, education and engineering). On top of it, acronyms and product names found in the JD (like "Coupa" or "HL7") are detected automatically. ESCO/O*NET import is planned for Phase 2.
 - **Storage:** profile, saved versions and settings live in the browser (localStorage). Accounts and Postgres come in Phase 2.
 - **Job link field:** shown in the UI but turned off, labelled Phase 2.
+
+## Phases 2–4 notes
+
+**Built**
+- AI with your own key: 10 providers plus local servers, a server proxy that keeps no state, refusal fallback for Claude models, and a truth check in code.
+- Job links:
+  - ATS APIs: Greenhouse, Lever, Ashby, SmartRecruiters and Workable.
+  - Pages that publish schema.org JobPosting data, with plain-page text as the fallback.
+  - Private and internal addresses are blocked (SSRF guard).
+  - Portals that forbid scraping get a paste/share message instead.
+- Watched company boards on the Jobs tab, with new-match notifications. Boards are checked when the tab opens, at most every 6 hours.
+- Android share target (`/cvtuner/share`) and the Chrome MV3 extension in `apps/extension`.
+- Application tracker, cover letters, 8 templates (4 ATS-safe, 4 designed, with photo support) and 7 document languages.
+- ATS readiness report, and recruiter screening (bulk upload, ranking, must-have skills, CSV).
+- Auto or manual skill confirmation. Auto needs evidence from the resume.
+- JD skills placed first, bold metrics, and AI metric placeholders.
+
+**Not built yet**
+- **Accounts and cloud sync.** These need a database (for example Neon or Supabase through the Vercel Marketplace). Until then, data stays in the browser, and Profile offers JSON export.
+- **Native iOS and Android apps in the stores.** The installable web app (PWA) plus the Android share target covers most of this. iOS has no web share target.
+- **Background checks of watched boards while the app is closed.** These need a scheduled job and a database.
+- **ESCO / O*NET skill import.** The taxonomy is still the curated cross-domain list.
+- **PDF fonts for non-Latin scripts** such as Hindi and Arabic.
+- **Importing resumes built with sidebar templates.** Text extraction from these PDFs can put the sidebar first. That is the same column-order problem the ATS check warns about, so recruiters should prefer Word or single-column files.

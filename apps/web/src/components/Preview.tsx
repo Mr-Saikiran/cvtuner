@@ -1,6 +1,6 @@
 "use client";
 
-import type { Resume } from "@cvtuner/core";
+import { countPlaceholders, type Resume } from "@cvtuner/core";
 import type { DocStyle, FitResult } from "@cvtuner/render";
 import { useEffect, useRef, useState } from "react";
 import { downloadBlob, fileBase } from "@/lib/files";
@@ -14,10 +14,11 @@ interface Props {
   title?: string;
   company?: string;
   style?: DocStyle;
+  onPages?: (pages: number) => void;
 }
 
 /** Renders the tuned resume in the browser, fitted to the page limit, and offers PDF/DOCX downloads. */
-export function Preview({ resume, maxPages, keywords, protect, title, company, style }: Props) {
+export function Preview({ resume, maxPages, keywords, protect, title, company, style, onPages }: Props) {
   const [fit, setFit] = useState<FitResult | null>(null);
   const [url, setUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -35,6 +36,7 @@ export function Preview({ resume, maxPages, keywords, protect, title, company, s
         const res = await fitToPages(resume, { targetPages: maxPages, maxPages, keywords, protect, style });
         if (id !== run.current) return;
         setFit(res);
+        onPages?.(res.pages);
         setError(null);
         setUrl((old) => {
           if (old) URL.revokeObjectURL(old);
@@ -87,6 +89,11 @@ export function Preview({ resume, maxPages, keywords, protect, title, company, s
       {fit && fit.droppedBullets > 0 ? (
         <p className="muted mb-2 text-xs">
           {fit.droppedBullets} less relevant line{fit.droppedBullets > 1 ? "s were" : " was"} left out to fit {maxPages} pages. Your profile is unchanged.
+        </p>
+      ) : null}
+      {countPlaceholders(resume) ? (
+        <p className="mb-2 rounded-lg bg-amber-500/10 p-2 text-xs text-amber-800 dark:text-amber-300">
+          {countPlaceholders(resume)} placeholder{countPlaceholders(resume) > 1 ? "s" : ""} like [X%] — replace them with your real numbers in Changes before you send this.
         </p>
       ) : null}
       {error ? <p className="text-sm text-red-600">Preview failed: {error}</p> : null}

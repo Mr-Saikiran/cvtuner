@@ -43,6 +43,7 @@ export function sampleResume(): Resume {
       { name: "Skills", keywords: ["Procurement", "Vendor Management", "Negotiation", "SAP", "Excel", "Power BI", "Lean", "Six Sigma", "Budgeting", "Forecasting", "Inventory Management"] },
     ],
     certificates: ["Lean Six Sigma Green Belt"],
+    languages: ["English (fluent)", "Hindi (native)", "Telugu (native)"],
   });
 }
 

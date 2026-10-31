@@ -1,16 +1,12 @@
 "use client";
 
 import { DOC_LANGUAGES, PROVIDERS, providerInfo, type ProviderId } from "@cvtuner/core";
+import { TEMPLATES, type TemplateId, type Theme } from "@cvtuner/render";
 import { useState } from "react";
 import { activeModel, aiChat, aiModels } from "@/lib/ai";
 import type { Settings } from "@/lib/store";
 import { Badge, Button, Card, Segmented } from "./ui";
 
-const TEMPLATE_INFO = [
-  { value: "classic" as const, label: "Classic", hint: "Navy headings with rules" },
-  { value: "modern" as const, label: "Modern", hint: "Teal accent bars" },
-  { value: "serif" as const, label: "Serif", hint: "Centered, Times" },
-];
 
 export function SettingsView({ settings, setSettings }: { settings: Settings; setSettings: (s: Settings) => void }) {
   return (
@@ -39,6 +35,34 @@ export function SettingsView({ settings, setSettings }: { settings: Settings; se
               ]}
             />
           </Row>
+          <Row
+            label="Confirm missing skills"
+            hint="Manual: you tap each missing skill you really have. Auto: skills proven by a line in your resume are confirmed for you (with AI, the model must quote that line). You can untick any of them."
+          >
+            <Segmented
+              label="Confirm missing skills"
+              value={settings.skillConfirm}
+              onChange={(skillConfirm) => setSettings({ ...settings, skillConfirm })}
+              options={[
+                { value: "manual", label: "Manual" },
+                { value: "auto", label: "Auto" },
+              ]}
+            />
+          </Row>
+          <Row
+            label="Metric placeholders (AI)"
+            hint="Numbers make bullets stand out. AI keeps every number from your resume and, where a line has none, adds a placeholder like [X%] for you to fill in. It never makes up figures."
+          >
+            <Segmented
+              label="Metric placeholders"
+              value={settings.suggestMetrics ? "on" : "off"}
+              onChange={(v) => setSettings({ ...settings, suggestMetrics: v === "on" })}
+              options={[
+                { value: "on", label: "On" },
+                { value: "off", label: "Off" },
+              ]}
+            />
+          </Row>
           <Row label="Cover letter tone" hint="Used by both the rule engine and AI.">
             <Segmented
               label="Tone"
@@ -57,23 +81,38 @@ export function SettingsView({ settings, setSettings }: { settings: Settings; se
         <div className="flex flex-col gap-4">
           <div>
             <p className="mb-2 text-sm font-medium">Template</p>
-            <div className="grid grid-cols-3 gap-2">
-              {TEMPLATE_INFO.map((t) => (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {(Object.values(TEMPLATES) as Theme[]).map((t) => (
                 <button
-                  key={t.value}
+                  key={t.id}
                   type="button"
-                  onClick={() => setSettings({ ...settings, template: t.value })}
-                  aria-pressed={settings.template === t.value}
-                  className={`rounded-xl border p-3 text-left transition-colors ${settings.template === t.value ? "border-brand-500 bg-brand-500/10" : "border-[var(--border)] hover:border-brand-500/50"}`}
+                  onClick={() => setSettings({ ...settings, template: t.id })}
+                  aria-pressed={settings.template === t.id}
+                  className={`rounded-xl border p-2.5 text-left transition-colors ${settings.template === t.id ? "border-brand-500 bg-brand-500/10" : "border-[var(--border)] hover:border-brand-500/50"}`}
                 >
-                  <TemplateThumb id={t.value} />
-                  <p className="mt-2 text-sm font-medium">{t.label}</p>
-                  <p className="muted text-xs">{t.hint}</p>
+                  <TemplateThumb theme={t} />
+                  <p className="mt-2 text-sm font-medium">{t.name}</p>
+                  <p className="muted text-xs">{t.description}</p>
+                  <span className="mt-1 inline-block">{t.singleColumn ? <Badge tone="good">ATS-safe</Badge> : <Badge tone="warn">Sidebar</Badge>}</span>
                 </button>
               ))}
             </div>
-            <p className="muted mt-2 text-xs">All templates are single column with real text, so applicant tracking systems can read them.</p>
+            <p className="muted mt-2 text-xs">
+              ATS-safe templates are single column. Sidebar designs look great to people and parse fine in modern ATS; the Word export of every template is single column.
+              Photo templates show your photo from the Profile tab.
+            </p>
           </div>
+          <Row label="Bold numbers" hint="Numbers, percentages and amounts in your bullets are set in bold so results stand out.">
+            <Segmented
+              label="Bold numbers"
+              value={settings.boldMetrics ? "on" : "off"}
+              onChange={(v) => setSettings({ ...settings, boldMetrics: v === "on" })}
+              options={[
+                { value: "on", label: "On" },
+                { value: "off", label: "Off" },
+              ]}
+            />
+          </Row>
           <Row label="Document language" hint="Section headings in the PDF and Word file. AI mode also writes new lines in this language; the rule engine writes English.">
             <select className="field max-w-48" value={settings.lang} onChange={(e) => setSettings({ ...settings, lang: e.target.value })} aria-label="Document language">
               {Object.entries(DOC_LANGUAGES).map(([code, l]) => (
@@ -223,20 +262,30 @@ function AiCard({ settings, setSettings }: { settings: Settings; setSettings: (s
   );
 }
 
-function TemplateThumb({ id }: { id: "classic" | "modern" | "serif" }) {
-  const accent = id === "modern" ? "#0f766e" : id === "serif" ? "#111" : "#1f3a5f";
-  const center = id === "serif";
+function TemplateThumb({ theme: t }: { theme: Theme }) {
+  const accent = t.nameColor ?? t.accent;
+  const sb = t.sidebar;
+  const sx = sb ? (sb.side === "left" ? 0 : 42) : 0;
+  const mainX = sb?.side === "left" ? 22 : 5;
+  const mainW = sb ? 34 : 50;
   return (
-    <svg viewBox="0 0 60 40" className="h-14 w-full rounded bg-white" aria-hidden>
-      {id === "modern" ? <rect x="4" y="4" width="1.6" height="8" fill={accent} /> : null}
-      <rect x={center ? 18 : 8} y="5" width="24" height="3" rx="1" fill={accent} />
-      <rect x={center ? 22 : 8} y="9.5" width="16" height="1.6" rx="0.8" fill="#999" />
-      {[16, 27].map((y) => (
+    <svg viewBox="0 0 60 44" className="h-16 w-full rounded border border-black/5 bg-white" aria-hidden>
+      {sb ? <rect x={sx} y="0" width="18" height="44" fill={sb.bg === "#ffffff" ? "#f8f8f8" : sb.bg} /> : null}
+      {t.band ? <rect x="0" y="0" width="60" height="11" fill={t.band.bg} /> : null}
+      {t.photo ? <circle cx={sb?.side === "left" ? 8 : 9} cy="5.5" r="3.6" fill="#c7cdd6" /> : null}
+      <rect x={t.photo ? 15 : t.align === "center" ? 18 : mainX} y="3" width="20" height="3" rx="1" fill={t.band ? t.band.fg : accent} />
+      <rect x={t.photo ? 15 : t.align === "center" ? 22 : mainX} y="7.5" width="13" height="1.4" rx="0.7" fill="#999" />
+      {t.contactRight && !sb ? <rect x="44" y="3.5" width="11" height="4" rx="0.6" fill="#bbb" /> : null}
+      {sb
+        ? [15, 22, 29].map((y) => <rect key={y} x={sx + 3} y={y} width="11" height="1.2" rx="0.6" fill={sb.fg === "#ffffff" ? "#9fb3d1" : "#bbb"} />)
+        : null}
+      {[15, 28].map((y) => (
         <g key={y}>
-          {id === "modern" ? <rect x="4" y={y} width="1.2" height="2.4" fill={accent} /> : <rect x="4" y={y + 3} width="52" height="0.5" fill={accent} />}
-          <rect x={id === "modern" ? 7 : center ? 24 : 4} y={y} width="12" height="2" rx="1" fill={accent} />
-          <rect x="6" y={y + 5} width="46" height="1.2" rx="0.6" fill="#ccc" />
-          <rect x="6" y={y + 7.5} width="38" height="1.2" rx="0.6" fill="#ccc" />
+          {t.heading === "bar" ? <rect x={mainX - 2} y={y} width="1.2" height="2.4" fill={t.accent} /> : null}
+          {t.heading === "rule" ? <rect x={mainX} y={y + 3} width={mainW} height="0.5" fill={t.accent} /> : null}
+          <rect x={t.align === "center" && !sb ? 24 : mainX} y={y} width="12" height="2" rx="1" fill={t.accent} />
+          <rect x={mainX} y={y + 5} width={mainW - 2} height="1.2" rx="0.6" fill="#ccc" />
+          <rect x={mainX} y={y + 7.5} width={mainW - 10} height="1.2" rx="0.6" fill="#ccc" />
         </g>
       ))}
     </svg>

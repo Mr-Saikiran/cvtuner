@@ -69,7 +69,7 @@ function lowerFirst(s: string) {
   return /^[A-Z]{2}/.test(s) ? s : s.charAt(0).toLowerCase() + s.slice(1);
 }
 
-function estimateYears(resume: Resume): number {
+export function estimateYears(resume: Resume): number {
   const years = resume.work
     .flatMap((w) => [w.startDate, w.endDate])
     .map((d) => (d && /present|current|now/i.test(d) ? new Date().getFullYear() : Number(d?.match(/(19|20)\d{2}/)?.[0])))

@@ -1,5 +1,5 @@
-import { docLabels, localizeDate, type Resume } from "@cvtuner/core";
-import { AlignmentType, BorderStyle, Document, ExternalHyperlink, LevelFormat, Packer, Paragraph, TabStopType, TextRun } from "docx";
+import { docLabels, localizeDate, splitMetrics, type Resume } from "@cvtuner/core";
+import { AlignmentType, BorderStyle, Document, ExternalHyperlink, LevelFormat, Packer, Paragraph, ShadingType, TabStopType, TextRun } from "docx";
 import { PAGE, TEMPLATES, type DocStyle, type LayoutOptions } from "./options";
 
 const pt = (n: number) => Math.round(n * 2); // docx sizes are half-points
@@ -10,7 +10,11 @@ const twip = (n: number) => Math.round(n * 20); // twentieths of a point
  * Single column, real text, no tables or text boxes — safe for ATS parsers.
  */
 export function buildDocx(resume: Resume, layout: LayoutOptions, style: DocStyle = {}): Document {
-  const theme = TEMPLATES[style.template ?? "classic"];
+  // sidebar templates export as a single column in Word, which every ATS reads in order
+  const theme = TEMPLATES[style.template ?? "classic"] ?? TEMPLATES.classic;
+  const band = theme.band ? { type: ShadingType.CLEAR, color: "auto", fill: theme.band.bg.replace("#", "") } : undefined;
+  const nameColor = (theme.band?.fg ?? theme.nameColor ?? theme.accent).replace("#", "");
+  const boldMetrics = style.boldMetrics !== false;
   const ACCENT = theme.accent.replace("#", "").toUpperCase();
   const L = docLabels(style.lang);
   const align = theme.align === "center" ? AlignmentType.CENTER : AlignmentType.LEFT;
@@ -30,8 +34,12 @@ export function buildDocx(resume: Resume, layout: LayoutOptions, style: DocStyle
           : { bottom: { style: BorderStyle.SINGLE, size: 6, color: ACCENT, space: 1 } },
       children: [new TextRun({ text: text.toUpperCase(), bold: true, color: ACCENT, size: pt(layout.fontSize * 1.05), characterSpacing: 12 })],
     });
-  const bullet = (text: string) =>
-    new Paragraph({ numbering: { reference: "dots", level: 0 }, spacing: { line, after: 20 }, children: [new TextRun({ text, size })] });
+  const bullet = (text: string, metrics = boldMetrics) =>
+    new Paragraph({
+      numbering: { reference: "dots", level: 0 },
+      spacing: { line, after: 20 },
+      children: (metrics ? splitMetrics(text) : [{ text }]).map((r) => new TextRun({ text: r.text, bold: "bold" in r ? r.bold : false, size })),
+    });
   const rowWithDate = (left: TextRun[], right?: string) =>
     new Paragraph({
       spacing: { line, before: twip(layout.gap * 0.4) },
@@ -42,9 +50,9 @@ export function buildDocx(resume: Resume, layout: LayoutOptions, style: DocStyle
   const dates = (a?: string, c?: string) => [localizeDate(a, L), localizeDate(c, L)].filter(Boolean).join(" – ");
 
   children.push(
-    new Paragraph({ alignment: align, children: [new TextRun({ text: b.name, bold: true, color: ACCENT, size: pt(layout.fontSize * 2) })] }),
+    new Paragraph({ alignment: align, shading: band, spacing: band ? { before: 120 } : undefined, children: [new TextRun({ text: b.name, bold: true, color: nameColor, size: pt(layout.fontSize * 2) })] }),
   );
-  if (b.label) children.push(new Paragraph({ alignment: align, children: [new TextRun({ text: b.label, size: pt(layout.fontSize * 1.1), color: "333333" })] }));
+  if (b.label) children.push(new Paragraph({ alignment: align, shading: band, children: [new TextRun({ text: b.label, size: pt(layout.fontSize * 1.1), color: "333333" })] }));
   const contact = [b.email, b.phone, b.location].filter(Boolean) as string[];
   if (contact.length || b.url) {
     const runs: (TextRun | ExternalHyperlink)[] = [new TextRun({ text: contact.join("  |  "), size: pt(layout.fontSize * 0.92), color: "444444" })];
@@ -52,7 +60,7 @@ export function buildDocx(resume: Resume, layout: LayoutOptions, style: DocStyle
       runs.push(new TextRun({ text: contact.length ? "  |  " : "", size: pt(layout.fontSize * 0.92), color: "444444" }));
       runs.push(new ExternalHyperlink({ link: b.url.startsWith("http") ? b.url : `https://${b.url}`, children: [new TextRun({ text: b.url, size: pt(layout.fontSize * 0.92), style: "Hyperlink" })] }));
     }
-    children.push(new Paragraph({ alignment: align, spacing: { before: 60 }, children: runs }));
+    children.push(new Paragraph({ alignment: align, shading: band, spacing: { before: 60, after: band ? 120 : 0 }, children: runs }));
   }
 
   if (b.summary) {
@@ -116,7 +124,10 @@ export function buildDocx(resume: Resume, layout: LayoutOptions, style: DocStyle
   }
   if (resume.certificates.length) {
     children.push(heading(L.certifications));
-    resume.certificates.forEach((c) => children.push(bullet(c)));
+    resume.certificates.forEach((c) => children.push(bullet(c, false)));
+  }
+  if (resume.languages.length) {
+    children.push(heading(L.languages), new Paragraph({ spacing: { line }, children: [new TextRun({ text: resume.languages.join(" · "), size })] }));
   }
 
   return new Document({

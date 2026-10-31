@@ -177,14 +177,16 @@ export function applySuggestions(resume: Resume, suggestions: Suggestion[]): Res
         break;
       }
       case "add-skills": {
+        // newly confirmed JD skills go to the front of the first group, where ATS and recruiters look first
         if (!out.skills.length) out.skills.push({ id: newId("skill"), name: "Skills", keywords: [] });
         const have = new Set(allSkills(out).map((k) => k.toLowerCase()));
-        out.skills[0]!.keywords.push(...s.skills.filter((k) => !have.has(k.toLowerCase())));
+        out.skills[0]!.keywords.unshift(...s.skills.filter((k) => !have.has(k.toLowerCase())));
         break;
       }
       case "reorder-skills": {
         const rank = new Map(s.order.map((k, i) => [k.toLowerCase(), i]));
-        for (const g of out.skills) g.keywords.sort((a, b) => (rank.get(a.toLowerCase()) ?? 1e6) - (rank.get(b.toLowerCase()) ?? 1e6));
+        // skills missing from the saved order were just added for this JD, so they stay in front
+        for (const g of out.skills) g.keywords.sort((a, b) => (rank.get(a.toLowerCase()) ?? -1) - (rank.get(b.toLowerCase()) ?? -1));
         break;
       }
       case "summary": {
@@ -249,14 +251,23 @@ export function removableBulletCount(resume: Resume): number {
   return [...resume.work, ...resume.projects].reduce((n, e) => n + Math.max(0, e.highlights.length - 1), 0);
 }
 
-/** Fast keyword-coverage score (0–100) for ranking many postings, e.g. a watched job board. */
-export function matchScore(resume: Resume, jdText: string, confirmedSkills: string[] = []): { score: number; missing: string[] } {
+/** Fast keyword-coverage score (0–100) for ranking many postings or many resumes. */
+export function matchScore(
+  resume: Resume,
+  jdText: string,
+  confirmedSkills: string[] = [],
+): { score: number; missing: string[]; matched: string[]; allMissing: string[] } {
   const jd = parseJd(jdText, { phrases: false });
   const text = resumeText(resume);
+  const index = buildIndex(allSkills(resume));
+  const profileTerms = new Set(findTerms(text, index).map((t) => t.toLowerCase()));
   const confirmed = new Set(confirmedSkills.map((s) => s.toLowerCase()));
-  const has = (n: string) => containsTerm(text, n) || confirmed.has(n.toLowerCase());
+  const has = (n: string) => profileTerms.has(n.toLowerCase()) || containsTerm(text, n) || confirmed.has(n.toLowerCase());
+  const allMissing = jd.keywords.filter((k) => k.known && !has(k.name)).map((k) => k.name);
   return {
     score: weightedScore(jd.keywords, has),
-    missing: jd.keywords.filter((k) => k.known && !has(k.name)).slice(0, 6).map((k) => k.name),
+    missing: allMissing.slice(0, 6),
+    allMissing,
+    matched: jd.keywords.filter((k) => has(k.name)).map((k) => k.name),
   };
 }

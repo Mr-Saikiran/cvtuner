@@ -2,7 +2,9 @@
 
 import {
   applySuggestions,
+  atsReport,
   buildTailorPrompt,
+  inferSkillsFromResume,
   DOC_LANGUAGES,
   extractJson,
   newId,
@@ -18,6 +20,8 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { activeModel, aiChat, aiReady, fetchJob } from "@/lib/ai";
 import { INCOMING_KEY, useDraftJd, type SavedJob, type Settings } from "@/lib/store";
+import { TEMPLATES } from "@cvtuner/render";
+import { AtsCard } from "./AtsCard";
 import { CoverLetterCard } from "./CoverLetterCard";
 import { JdHighlight } from "./JdHighlight";
 import { Preview } from "./Preview";
@@ -57,6 +61,9 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave, on
   const [aiRun, setAiRun] = useState<AiRun | null>(null);
   const [aiState, setAiState] = useState<{ busy: boolean; error?: string }>({ busy: false });
   const [letter, setLetter] = useState<string[] | undefined>(undefined);
+  /** skills confirmed automatically, with the resume line that proves each */
+  const [autoEvidence, setAutoEvidence] = useState<Record<string, string>>({});
+  const [pages, setPages] = useState<number | undefined>(undefined);
 
   const useAi = settings.engine === "ai" && aiReady(settings.ai);
 
@@ -69,7 +76,7 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave, on
     setLinkMeta({ url: openJob.url, title: openJob.title, company: openJob.company });
     setLetter(openJob.coverLetter);
     if (openJob.engine === "ai") {
-      setAiRun({ jd: openJob.jd, voice: settings.voice, suggestions: openJob.suggestions, rejected: [], label: "saved AI version" });
+      setAiRun({ jd: openJob.jd, voice: settings.voice, suggestions: openJob.suggestions, rejected: [], inferred: [], label: "saved AI version" });
       setOverrides({});
     } else {
       setAiRun(null);
@@ -144,19 +151,26 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave, on
     }
   }
 
-  const runAi = async (jd: string, rule = tailor(profile, jd, { voice: settings.voice, confirmedSkills: confirmed })) => {
+  const runAi = async (jd: string, confirmedNow = confirmed) => {
+    const rule = tailor(profile, jd, { voice: settings.voice, confirmedSkills: confirmedNow });
     setAiState({ busy: true });
     try {
       const input = {
         resume: profile,
         jd,
         voice: settings.voice,
-        confirmedSkills: confirmed,
+        confirmedSkills: confirmedNow,
         gaps: rule.gaps.map((g) => g.name),
         language: DOC_LANGUAGES[settings.lang]?.name ?? "English",
+        skillConfirm: settings.skillConfirm,
+        suggestMetrics: settings.suggestMetrics,
       };
       const reply = await aiChat(settings.ai, buildTailorPrompt(input));
       const outcome = validateAiTailor(extractJson(reply), input, rule);
+      if (outcome.inferred.length) {
+        setConfirmed((prev) => [...new Set([...prev, ...outcome.inferred.map((i) => i.skill)])]);
+        setAutoEvidence((prev) => ({ ...prev, ...Object.fromEntries(outcome.inferred.map((i) => [i.skill, `AI: “${i.evidence}”`])) }));
+      }
       setAiRun({ ...outcome, jd, voice: settings.voice, label: `${providerInfo(settings.ai.provider).name} · ${activeModel(settings.ai)}` });
       setOverrides({});
       setAiState({ busy: false });
@@ -173,12 +187,25 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave, on
       setJobId(null);
       setLetter(undefined);
     }
-    if (useAi) void runAi(draft);
+    let confirmedNow = confirmed;
+    if (settings.skillConfirm === "auto") {
+      // confirm missing skills the resume already proves, e.g. "supply chain management" ← "managed the supply chain"
+      const missingNow = tailor(profile, draft, { confirmedSkills: confirmed }).gaps.map((g) => g.name);
+      const found = inferSkillsFromResume(profile, missingNow);
+      if (found.length) {
+        confirmedNow = [...new Set([...confirmed, ...found.map((f) => f.skill)])];
+        setConfirmed(confirmedNow);
+        setAutoEvidence((prev) => ({ ...prev, ...Object.fromEntries(found.map((f) => [f.skill, `Your resume: “${f.evidence}”`])) }));
+      }
+    }
+    if (useAi) void runAi(draft, confirmedNow);
     else setAiRun(null);
   };
 
-  const toggleConfirm = (k: KeywordMatch) =>
+  const toggleConfirm = (k: KeywordMatch) => {
     setConfirmed((prev) => (prev.includes(k.name) ? prev.filter((x) => x !== k.name) : [...prev, k.name]));
+    setAutoEvidence(({ [k.name]: _drop, ...rest }) => rest);
+  };
 
   const setOverride = (s: Suggestion, o: Override) => setOverrides((prev) => ({ ...prev, [keyOf(s)]: { ...prev[keyOf(s)], ...o } }));
 
@@ -208,7 +235,11 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave, on
 
   const covered = result?.keywords.filter((k) => k.coverage === "covered") ?? [];
   const missing = result?.keywords.filter((k) => k.coverage === "missing") ?? [];
-  const style = { template: settings.template, lang: settings.lang };
+  const style = { template: settings.template, lang: settings.lang, boldMetrics: settings.boldMetrics };
+  const ats = useMemo(
+    () => (result ? atsReport(tuned, result, { pages, singleColumn: TEMPLATES[settings.template]?.singleColumn !== false }) : null),
+    [tuned, result, pages, settings.template],
+  );
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
@@ -348,20 +379,24 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave, on
                       type="button"
                       onClick={() => toggleConfirm(k)}
                       aria-pressed={k.confirmed}
+                      title={autoEvidence[k.name] ? `Auto-confirmed. ${autoEvidence[k.name]} Tap to undo.` : undefined}
                       className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors ${
                         k.confirmed ? "border-amber-500 bg-amber-500/15 text-amber-700 dark:text-amber-400" : "border-red-500/40 text-red-700 hover:bg-red-500/10 dark:text-red-400"
                       }`}
                     >
-                      {k.confirmed ? "✓ " : "+ "}
+                      {k.confirmed ? (autoEvidence[k.name] ? "auto ✓ " : "✓ ") : "+ "}
                       {k.name}
                     </button>
                   ))}
                 </div>
-                <p className="muted mt-2 text-xs">CVTuner never adds a skill you have not confirmed.{useAi && aiCurrent ? " Re-run AI after confirming skills." : ""}</p>
+                <p className="muted mt-2 text-xs">
+                  {settings.skillConfirm === "auto" ? "Auto mode confirms only skills a line of your resume proves — hover to see it, tap to undo. " : ""}
+                  CVTuner never adds a skill that isn&apos;t confirmed.{useAi && aiCurrent ? " Re-run AI after confirming skills." : ""}</p>
               </div>
             ) : null}
           </Card>
         ) : null}
+        {ats ? <AtsCard report={ats} /> : null}
       </div>
 
       <div className="flex min-w-0 flex-col gap-4">
@@ -424,7 +459,7 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave, on
               />
             </div>
             <div className={mobilePane === "preview" ? "" : "hidden lg:block"}>
-              <Preview resume={tuned} maxPages={settings.maxPages} keywords={keywords} protect={protect} title={title} company={company} style={style} />
+              <Preview resume={tuned} maxPages={settings.maxPages} keywords={keywords} protect={protect} title={title} company={company} style={style} onPages={setPages} />
             </div>
             <div className={mobilePane === "letter" ? "" : "hidden lg:block"}>
               <CoverLetterCard

@@ -5,16 +5,18 @@ import { isProfileEmpty, useJobs, useProfile, useSettings, type SavedJob } from 
 import { BoardsView } from "./BoardsView";
 import { HistoryView } from "./HistoryView";
 import { ProfileView } from "./ProfileView";
+import { ScreenView } from "./ScreenView";
 import { SettingsView } from "./SettingsView";
 import { TailorView } from "./TailorView";
 
-type Tab = "tune" | "profile" | "jobs" | "saved" | "settings";
+type Tab = "tune" | "profile" | "jobs" | "saved" | "screen" | "settings";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "tune", label: "Tune" },
   { id: "profile", label: "Profile" },
   { id: "jobs", label: "Jobs" },
   { id: "saved", label: "Tracker" },
+  { id: "screen", label: "Screen" },
   { id: "settings", label: "Settings" },
 ];
 
@@ -94,11 +96,15 @@ export function App() {
           />
         )}
         {tab === "settings" && <SettingsView settings={settings} setSettings={setSettings} />}
+        {/* kept mounted so uploaded candidates survive tab switches */}
+        <div className={tab === "screen" ? "" : "hidden"}>
+          <ScreenView />
+        </div>
       </main>
 
       {/* bottom tab bar on phones */}
       <nav
-        className="surface fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-x-0 border-b-0 pb-[env(safe-area-inset-bottom)] sm:hidden"
+        className="surface fixed inset-x-0 bottom-0 z-20 grid grid-cols-6 border-x-0 border-b-0 pb-[env(safe-area-inset-bottom)] sm:hidden"
         aria-label="Main"
       >
         {TABS.map((t) => (
@@ -106,7 +112,7 @@ export function App() {
             key={t.id}
             type="button"
             onClick={() => setTab(t.id)}
-            className={`py-3 text-sm font-medium ${tab === t.id ? "text-brand-600" : "muted"}`}
+            className={`py-3 text-xs font-medium ${tab === t.id ? "text-brand-600" : "muted"}`}
             aria-current={tab === t.id ? "page" : undefined}
           >
             {t.label}

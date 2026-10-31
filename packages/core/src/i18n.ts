@@ -6,17 +6,19 @@ export interface DocLabels {
   projects: string;
   education: string;
   certifications: string;
+  languages: string;
+  contact: string;
   present: string;
 }
 
 export const DOC_LANGUAGES: Record<string, { name: string; labels: DocLabels }> = {
-  en: { name: "English", labels: { summary: "Summary", skills: "Skills", experience: "Experience", projects: "Projects", education: "Education", certifications: "Certifications", present: "Present" } },
-  es: { name: "Español", labels: { summary: "Perfil", skills: "Habilidades", experience: "Experiencia", projects: "Proyectos", education: "Formación", certifications: "Certificaciones", present: "Actualidad" } },
-  fr: { name: "Français", labels: { summary: "Profil", skills: "Compétences", experience: "Expérience", projects: "Projets", education: "Formation", certifications: "Certifications", present: "Aujourd'hui" } },
-  de: { name: "Deutsch", labels: { summary: "Profil", skills: "Kenntnisse", experience: "Berufserfahrung", projects: "Projekte", education: "Ausbildung", certifications: "Zertifikate", present: "Heute" } },
-  pt: { name: "Português", labels: { summary: "Resumo", skills: "Competências", experience: "Experiência", projects: "Projetos", education: "Formação", certifications: "Certificações", present: "Atual" } },
-  it: { name: "Italiano", labels: { summary: "Profilo", skills: "Competenze", experience: "Esperienza", projects: "Progetti", education: "Istruzione", certifications: "Certificazioni", present: "Oggi" } },
-  nl: { name: "Nederlands", labels: { summary: "Profiel", skills: "Vaardigheden", experience: "Werkervaring", projects: "Projecten", education: "Opleiding", certifications: "Certificaten", present: "Heden" } },
+  en: { name: "English", labels: { summary: "Summary", skills: "Skills", experience: "Experience", projects: "Projects", education: "Education", certifications: "Certifications", languages: "Languages", contact: "Contact", present: "Present" } },
+  es: { name: "Español", labels: { summary: "Perfil", skills: "Habilidades", experience: "Experiencia", projects: "Proyectos", education: "Formación", certifications: "Certificaciones", languages: "Idiomas", contact: "Contacto", present: "Actualidad" } },
+  fr: { name: "Français", labels: { summary: "Profil", skills: "Compétences", experience: "Expérience", projects: "Projets", education: "Formation", certifications: "Certifications", languages: "Langues", contact: "Contact", present: "Aujourd'hui" } },
+  de: { name: "Deutsch", labels: { summary: "Profil", skills: "Kenntnisse", experience: "Berufserfahrung", projects: "Projekte", education: "Ausbildung", certifications: "Zertifikate", languages: "Sprachen", contact: "Kontakt", present: "Heute" } },
+  pt: { name: "Português", labels: { summary: "Resumo", skills: "Competências", experience: "Experiência", projects: "Projetos", education: "Formação", certifications: "Certificações", languages: "Idiomas", contact: "Contato", present: "Atual" } },
+  it: { name: "Italiano", labels: { summary: "Profilo", skills: "Competenze", experience: "Esperienza", projects: "Progetti", education: "Istruzione", certifications: "Certificazioni", languages: "Lingue", contact: "Contatti", present: "Oggi" } },
+  nl: { name: "Nederlands", labels: { summary: "Profiel", skills: "Vaardigheden", experience: "Werkervaring", projects: "Projecten", education: "Opleiding", certifications: "Certificaten", languages: "Talen", contact: "Contact", present: "Heden" } },
 };
 
 export function docLabels(lang = "en"): DocLabels {

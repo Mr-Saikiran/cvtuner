@@ -62,6 +62,10 @@ export interface AiTailorInput {
   gaps: string[];
   language: string;
   maxBullets?: number;
+  /** "auto": the model may confirm missing JD skills it can prove from the resume */
+  skillConfirm?: "manual" | "auto";
+  /** ask for [X%]-style placeholders where a bullet lacks a measurable result */
+  suggestMetrics?: boolean;
 }
 
 /** Compact, id-carrying view of the resume so the model can point bullets at the right role. */
@@ -88,14 +92,25 @@ export function buildTailorPrompt(input: AiTailorInput): ChatMessage[] {
 
 Rules:
 - Use ONLY facts present in the candidate's resume or in the confirmed skills list. Never invent employers, job titles, dates, degrees, numbers, tools, certifications or achievements.
-- Never mention any of these skills, which the candidate does NOT have: ${input.gaps.length ? input.gaps.join(", ") : "(none)"}.
+- Never mention any of these skills, which the candidate has not confirmed${input.skillConfirm === "auto" ? " (unless you list it in inferredSkills with proof)" : ""}: ${input.gaps.length ? input.gaps.join(", ") : "(none)"}.
 - Each new bullet must restate or reframe something the resume already shows, using the job description's wording where it is honestly true.
 - ${voiceRule}
 - Bullets: one sentence each, at most 30 words, no markdown.
 - Add at most ${input.maxBullets ?? 6} new bullets in total, at most 3 per role. Do not repeat bullets that already exist.
 - Write in this language: ${input.language}.
+- Keep every number, percentage, amount and duration from the original resume lines; quantified results make a resume stand out.${
+    input.suggestMetrics
+      ? `
+- Where a new bullet has no measurable result in the resume, add a placeholder the candidate will fill in, such as "by [X%]", "for [N] clients" or "saving [₹X]". Never make up an actual number.`
+      : ""
+  }${
+    input.skillConfirm === "auto"
+      ? `
+- For each of these missing job skills, decide whether the resume clearly proves it: ${input.gaps.join(", ") || "(none)"}. Only include a skill in "inferredSkills" when you can quote the exact resume line that proves it.`
+      : ""
+  }
 - Reply with JSON only, no prose and no code fences, in exactly this shape:
-{"bullets":[{"roleId":"<id of the role from the resume>","text":"<new bullet>","jdSource":"<short quote from the JD it answers>"}],"summary":"<2-3 sentence professional summary for this job, or empty string>","skillsOrder":["<existing or confirmed skills, most relevant to this job first>"],"jobTitle":"<job title from the JD>","company":"<company from the JD or empty>"}`;
+{"bullets":[{"roleId":"<id of the role from the resume>","text":"<new bullet>","jdSource":"<short quote from the JD it answers>"}],"summary":"<2-3 sentence professional summary for this job, or empty string>","skillsOrder":["<existing or confirmed skills, most relevant to this job first>"],"jobTitle":"<job title from the JD>","company":"<company from the JD or empty>"${input.skillConfirm === "auto" ? ',"inferredSkills":[{"skill":"<missing job skill>","evidence":"<exact quote from the resume>"}]' : ""}}`;
   const user = `CANDIDATE RESUME (JSON):
 ${JSON.stringify(resumeForPrompt(input.resume))}
 
@@ -122,6 +137,8 @@ export interface AiTailorOutcome {
   suggestions: Suggestion[];
   /** lines we dropped because they claimed something the profile does not support */
   rejected: { text: string; reason: string }[];
+  /** missing skills the model proved from a quoted resume line (auto mode only) */
+  inferred: { skill: string; evidence: string }[];
   jobTitle?: string;
   company?: string;
 }
@@ -137,14 +154,28 @@ export function validateAiTailor(raw: unknown, input: AiTailorInput, rule: Tailo
     skillsOrder?: string[];
     jobTitle?: string;
     company?: string;
+    inferredSkills?: { skill?: string; evidence?: string }[];
   };
   const { resume } = input;
   const roles = new Map<string, string>([
     ...resume.work.map((w) => [w.id, [w.position, w.name].filter(Boolean).join(" · ")] as [string, string]),
     ...resume.projects.map((p) => [p.id, p.name || "Project"] as [string, string]),
   ]);
-  const confirmed = new Set(input.confirmedSkills.map((s) => s.toLowerCase()));
   const text = resumeText(resume);
+  // auto mode: accept an inferred skill only if its quoted evidence really is in the resume
+  const inferred: AiTailorOutcome["inferred"] = [];
+  if (input.skillConfirm === "auto") {
+    const lines = text.split("\n").map((l) => l.toLowerCase());
+    const gapSet = new Map(input.gaps.map((g) => [g.toLowerCase(), g]));
+    for (const i of data.inferredSkills ?? []) {
+      const skill = gapSet.get(String(i.skill ?? "").toLowerCase());
+      const ev = String(i.evidence ?? "").toLowerCase().replace(/[.…"]+$/g, "").trim();
+      if (skill && ev.length >= 12 && lines.some((l) => l.includes(ev) || (ev.length > 30 && l.includes(ev.slice(0, 30))))) {
+        inferred.push({ skill, evidence: String(i.evidence).trim() });
+      }
+    }
+  }
+  const confirmed = new Set([...input.confirmedSkills, ...inferred.map((i) => i.skill)].map((s) => s.toLowerCase()));
   const index = buildIndex(allSkills(resume));
   // a skill counts as present if the resume mentions it under any alias ("vendor contracts" → Vendor Management)
   const profileTerms = new Set(findTerms(text, index).map((t) => t.toLowerCase()));
@@ -185,13 +216,15 @@ export function validateAiTailor(raw: unknown, input: AiTailorInput, rule: Tailo
     });
   }
 
-  const addSkills = rule.suggestions.find((s) => s.kind === "add-skills");
-  if (addSkills) suggestions.push(addSkills);
+  const toAdd = [...new Set([...(rule.suggestions.find((s) => s.kind === "add-skills")?.skills ?? []), ...inferred.map((i) => i.skill)])];
+  if (toAdd.length) suggestions.push({ id: newId("sug"), kind: "add-skills", skills: toAdd, accepted: true });
 
   const current = allSkills(resume);
-  const allowed = new Map([...current, ...input.confirmedSkills].map((s) => [s.toLowerCase(), s]));
+  const allowed = new Map([...current, ...input.confirmedSkills, ...inferred.map((i) => i.skill)].map((s) => [s.toLowerCase(), s]));
   const order = (data.skillsOrder ?? []).map((s) => allowed.get(String(s).toLowerCase())).filter((s): s is string => !!s);
-  const fullOrder = [...new Set([...order, ...current])];
+  // skills the JD asks for always lead, in JD priority order
+  const jdFirst = rule.keywords.map((k) => allowed.get(k.name.toLowerCase())).filter((s): s is string => !!s && current.includes(s));
+  const fullOrder = [...new Set([...jdFirst, ...order, ...current])];
   if (fullOrder.join("|") !== current.join("|")) {
     suggestions.push({ id: newId("sug"), kind: "reorder-skills", order: fullOrder, accepted: true });
   }
@@ -203,7 +236,7 @@ export function validateAiTailor(raw: unknown, input: AiTailorInput, rule: Tailo
     else suggestions.push({ id: newId("sug"), kind: "summary", text: summary, accepted: true, replace: true });
   }
 
-  return { suggestions, rejected, jobTitle: data.jobTitle?.trim() || undefined, company: data.company?.trim() || undefined };
+  return { suggestions, rejected, inferred, jobTitle: data.jobTitle?.trim() || undefined, company: data.company?.trim() || undefined };
 }
 
 // ---------- cover letter ----------

@@ -99,6 +99,7 @@ export function ProfileView({ profile, setProfile }: Props) {
       </Card>
 
       <Card title="Basics">
+        <PhotoField image={profile.basics.image} onChange={(img) => set((r) => void (r.basics.image = img))} />
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Full name" value={profile.basics.name} onChange={(v) => set((r) => void (r.basics.name = v))} />
           <Field label="Headline" value={profile.basics.label} onChange={(v) => set((r) => void (r.basics.label = v))} placeholder="e.g. Staff Nurse, Data Analyst" />
@@ -193,6 +194,56 @@ export function ProfileView({ profile, setProfile }: Props) {
       <Card title="Certifications">
         <Lines label="One per line" value={profile.certificates} onChange={(v) => set((r) => void (r.certificates = v))} />
       </Card>
+
+      <Card title="Languages">
+        <Lines label="One per line, e.g. English (fluent)" value={profile.languages} onChange={(v) => set((r) => void (r.languages = v))} />
+      </Card>
+    </div>
+  );
+}
+
+/** Square-cropped, downscaled JPEG so the photo stays small in storage and in the PDF. */
+async function toAvatar(file: File): Promise<string> {
+  const bmp = await createImageBitmap(file);
+  const side = Math.min(bmp.width, bmp.height);
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 256;
+  canvas.getContext("2d")!.drawImage(bmp, (bmp.width - side) / 2, (bmp.height - side) / 2, side, side, 0, 0, 256, 256);
+  return canvas.toDataURL("image/jpeg", 0.85);
+}
+
+function PhotoField({ image, onChange }: { image?: string; onChange: (v: string | undefined) => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  return (
+    <div className="mb-3 flex items-center gap-3">
+      {image ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={image} alt="Profile photo" className="size-14 rounded-full object-cover" />
+      ) : (
+        <div className="grid size-14 place-items-center rounded-full bg-black/5 text-xs muted dark:bg-white/10">Photo</div>
+      )}
+      <div className="flex flex-col gap-1">
+        <div className="flex gap-2">
+          <Button onClick={() => ref.current?.click()}>{image ? "Change photo" : "Add photo"}</Button>
+          {image ? (
+            <Button variant="danger" onClick={() => onChange(undefined)}>
+              Remove
+            </Button>
+          ) : null}
+        </div>
+        <span className="muted text-xs">Optional. Used only by photo templates (Clear, Balanced). Many countries prefer no photo.</span>
+      </div>
+      <input
+        ref={ref}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={async (e) => {
+          const f = e.target.files?.[0];
+          if (f) onChange(await toAvatar(f));
+          e.target.value = "";
+        }}
+      />
     </div>
   );
 }

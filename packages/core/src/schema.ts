@@ -45,12 +45,16 @@ export const ResumeSchema = z.object({
     url: z.string().optional(),
     location: z.string().optional(),
     summary: z.string().optional(),
+    /** small profile photo as a data: URL, used only by photo templates */
+    image: z.string().optional(),
   }),
   work: z.array(WorkSchema).default([]),
   education: z.array(EducationSchema).default([]),
   projects: z.array(ProjectSchema).default([]),
   skills: z.array(SkillGroupSchema).default([]),
   certificates: z.array(z.string()).default([]),
+  /** spoken languages, e.g. "English (fluent)" */
+  languages: z.array(z.string()).default([]),
 });
 
 export type Work = z.infer<typeof WorkSchema>;

@@ -1,6 +1,6 @@
 import { newId, type Resume } from "./schema";
 
-type Section = "summary" | "work" | "education" | "skills" | "projects" | "certificates" | "other";
+type Section = "summary" | "work" | "education" | "skills" | "projects" | "certificates" | "languages" | "other";
 
 const SECTION_HEADERS: [Section, RegExp][] = [
   ["summary", /^(summary|profile|professional summary|about me|objective|career objective|overview)$/i],
@@ -9,7 +9,8 @@ const SECTION_HEADERS: [Section, RegExp][] = [
   ["skills", /^(skills|technical skills|core skills|key skills|core competencies|competencies|technologies|tools|skills & tools|areas of expertise)$/i],
   ["projects", /^(projects|personal projects|key projects|selected projects)$/i],
   ["certificates", /^(certifications?|licenses?( (and|&) certifications)?|courses|awards)$/i],
-  ["other", /^(languages|interests|hobbies|references|volunteering|publications)$/i],
+  ["languages", /^(languages|languages known|language skills)$/i],
+  ["other", /^(interests|hobbies|references|volunteering|publications)$/i],
 ];
 
 const BULLET = /^\s*([-*•●◦▪‣–·]|\d+[.)])\s*/;
@@ -35,7 +36,7 @@ export function parseResumeText(raw: string): Resume {
     .replace(/\r/g, "")
     .replace(/(\p{Ll})- (\p{Ll})/gu, "$1$2") // words hyphenated across lines by PDF layout
     .split("\n").map((l) => l.replace(/\s+/g, " ").trim()).filter(Boolean);
-  const resume: Resume = { basics: { name: "" }, work: [], education: [], projects: [], skills: [], certificates: [] };
+  const resume: Resume = { basics: { name: "" }, work: [], education: [], projects: [], skills: [], certificates: [], languages: [] };
 
   let section: Section | "header" = "header";
   const summary: string[] = [];
@@ -67,6 +68,9 @@ export function parseResumeText(raw: string): Resume {
         break;
       case "certificates":
         resume.certificates.push(content);
+        break;
+      case "languages":
+        resume.languages.push(...content.split(/[,;|•·]\s*/).map((l) => l.trim()).filter(Boolean));
         break;
       case "work": {
         const last = resume.work[resume.work.length - 1];
