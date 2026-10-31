@@ -1,0 +1,9 @@
+name = "cvtuner-proxy"
+main = "worker.js"
+compatibility_date = "2025-06-01"
+
+# only /cvtuner* goes to Vercel; everything else on techswitch.in stays as it is
+routes = [{ pattern = "techswitch.in/cvtuner*", zone_name = "techswitch.in" }]
+
+[vars]
+ORIGIN = "https://cvtuner.vercel.app"

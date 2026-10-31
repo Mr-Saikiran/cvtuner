@@ -37,18 +37,18 @@ For any other framework, put them in `vercel.json`:
 }
 ```
 
-### B. techswitch.in uses Cloudflare DNS (proxied)
-Create a Worker with the route `techswitch.in/cvtuner*`:
+### B. techswitch.in uses Cloudflare (proxied DNS, orange cloud) — current setup
+A ready Worker is in `deploy/cloudflare/`. It forwards only `techswitch.in/cvtuner*` and keeps redirects on techswitch.in.
 
-```js
-export default {
-  fetch(req) {
-    const url = new URL(req.url);
-    url.hostname = "<project>.vercel.app";
-    return fetch(new Request(url, req));
-  },
-};
-```
+1. Set `ORIGIN` in `deploy/cloudflare/wrangler.toml` to the Vercel production domain, for example `https://cvtuner.vercel.app`.
+2. Deploy it:
+   ```bash
+   cd deploy/cloudflare
+   npx wrangler login     # or set CLOUDFLARE_API_TOKEN
+   npx wrangler deploy
+   ```
+   Or, in the dashboard: go to **Workers & Pages → Create → Worker**, paste `worker.js`, add the variable `ORIGIN`, then add the route `techswitch.in/cvtuner*` (zone techswitch.in) under **Settings → Domains & Routes**.
+3. The DNS record for `techswitch.in` must be **proxied** (orange cloud), or the route won't run.
 
 ### C. techswitch.in runs on your own server (Nginx)
 
