@@ -1,4 +1,4 @@
-import { parseResume, parseResumeText } from "@cvtuner/core";
+import { layoutPdfText, parseResume, parseResumeText, type PdfPage } from "@cvtuner/core";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -20,10 +20,22 @@ export async function POST(req: Request) {
     }
     let text: string;
     if (name.endsWith(".pdf")) {
-      const { extractText, getDocumentProxy } = await import("unpdf");
+      const { getDocumentProxy } = await import("unpdf");
       const doc = await getDocumentProxy(buf);
-      const out = await extractText(doc, { mergePages: false });
-      text = (out.text as string[]).join("\n");
+      // positions matter: designed resumes have sidebars and letter-spaced titles
+      const pages: PdfPage[] = [];
+      for (let n = 1; n <= Math.min(doc.numPages, 6); n++) {
+        const page = await doc.getPage(n);
+        const { width } = page.getViewport({ scale: 1 });
+        const content = await page.getTextContent();
+        pages.push({
+          width,
+          items: content.items.flatMap((i) =>
+            "str" in i ? [{ str: i.str, x: i.transform[4] as number, y: i.transform[5] as number, w: i.width, h: i.height || Math.abs(i.transform[3] as number) }] : [],
+          ),
+        });
+      }
+      text = layoutPdfText(pages);
     } else if (name.endsWith(".docx")) {
       const mammoth = await import("mammoth");
       text = (await mammoth.extractRawText({ buffer: Buffer.from(buf) })).value;

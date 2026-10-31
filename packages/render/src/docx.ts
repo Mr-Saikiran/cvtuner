@@ -1,4 +1,4 @@
-import { docLabels, localizeDate, splitMetrics, type Resume } from "@cvtuner/core";
+import { docLabels, isHidden, localizeDate, sectionOrder, splitMetrics, type Resume } from "@cvtuner/core";
 import { AlignmentType, BorderStyle, Document, ExternalHyperlink, LevelFormat, Packer, Paragraph, ShadingType, TabStopType, TextRun } from "docx";
 import { PAGE, TEMPLATES, type DocStyle, type LayoutOptions } from "./options";
 
@@ -63,71 +63,92 @@ export function buildDocx(resume: Resume, layout: LayoutOptions, style: DocStyle
     children.push(new Paragraph({ alignment: align, shading: band, spacing: { before: 60, after: band ? 120 : 0 }, children: runs }));
   }
 
-  if (b.summary) {
-    children.push(heading(L.summary), new Paragraph({ spacing: { line }, children: [new TextRun({ text: b.summary, size })] }));
-  }
   const groups = resume.skills.filter((g) => g.keywords.length);
-  if (groups.length) {
-    children.push(heading(L.skills));
-    for (const g of groups) {
-      children.push(
-        new Paragraph({
-          spacing: { line },
-          children: [
-            ...(groups.length > 1 ? [new TextRun({ text: `${g.name}: `, bold: true, size })] : []),
-            new TextRun({ text: g.keywords.join(" · "), size }),
-          ],
-        }),
-      );
+  const sections: Record<string, () => void> = {
+    summary: () => {
+      if (b.summary) children.push(heading(L.summary), new Paragraph({ spacing: { line }, children: [new TextRun({ text: b.summary, size })] }));
+    },
+    skills: () => {
+      if (!groups.length) return;
+      children.push(heading(groups.length === 1 && groups[0]!.name !== "Skills" ? groups[0]!.name : L.skills));
+      for (const g of groups) {
+        children.push(
+          new Paragraph({
+            spacing: { line },
+            children: [
+              ...(groups.length > 1 ? [new TextRun({ text: `${g.name}: `, bold: true, size })] : []),
+              new TextRun({ text: g.keywords.join(" · "), size }),
+            ],
+          }),
+        );
+      }
+    },
+    experience: () => {
+      if (!resume.work.length) return;
+      children.push(heading(L.experience));
+      for (const w of resume.work) {
+        children.push(
+          rowWithDate(
+            [
+              new TextRun({ text: w.position, bold: true, size }),
+              new TextRun({ text: `${w.position && w.name ? ", " : ""}${w.name}`, size }),
+              ...(w.location ? [new TextRun({ text: `, ${w.location}`, size, color: "555555" })] : []),
+            ],
+            dates(w.startDate, w.endDate),
+          ),
+        );
+        if (w.summary) children.push(new Paragraph({ spacing: { line }, children: [new TextRun({ text: w.summary, size, color: "555555" })] }));
+        w.highlights.forEach((h) => children.push(bullet(h)));
+      }
+    },
+    projects: () => {
+      if (!resume.projects.length) return;
+      children.push(heading(L.projects));
+      for (const p of resume.projects) {
+        children.push(rowWithDate([new TextRun({ text: p.name, bold: true, size })]));
+        if (p.description) children.push(new Paragraph({ spacing: { line }, children: [new TextRun({ text: p.description, size })] }));
+        p.highlights.forEach((h) => children.push(bullet(h)));
+      }
+    },
+    education: () => {
+      if (!resume.education.length) return;
+      children.push(heading(L.education));
+      for (const e of resume.education) {
+        const degree = [e.studyType, e.area].filter(Boolean).join(", ");
+        children.push(
+          rowWithDate(
+            [
+              new TextRun({ text: degree || e.institution, bold: true, size }),
+              ...(degree ? [new TextRun({ text: `, ${e.institution}`, size })] : []),
+              ...(e.score ? [new TextRun({ text: ` (${e.score})`, size, color: "555555" })] : []),
+              ...(e.note ? [new TextRun({ text: `. ${e.note}`, size, color: "555555" })] : []),
+            ],
+            dates(e.startDate, e.endDate),
+          ),
+        );
+      }
+    },
+    certifications: () => {
+      if (!resume.certificates.length) return;
+      children.push(heading(L.certifications));
+      resume.certificates.forEach((c) => children.push(bullet(c, false)));
+    },
+    languages: () => {
+      if (resume.languages.length) children.push(heading(L.languages), new Paragraph({ spacing: { line }, children: [new TextRun({ text: resume.languages.join(" · "), size })] }));
+    },
+  };
+  // Word is always one column, in the saved section order, without hidden sections
+  for (const id of sectionOrder(resume)) {
+    if (isHidden(resume, id)) continue;
+    if (sections[id]) {
+      sections[id]!();
+      continue;
     }
-  }
-  if (resume.work.length) {
-    children.push(heading(L.experience));
-    for (const w of resume.work) {
-      children.push(
-        rowWithDate(
-          [
-            new TextRun({ text: w.position, bold: true, size }),
-            new TextRun({ text: `${w.position && w.name ? ", " : ""}${w.name}`, size }),
-            ...(w.location ? [new TextRun({ text: `, ${w.location}`, size, color: "555555" })] : []),
-          ],
-          dates(w.startDate, w.endDate),
-        ),
-      );
-      if (w.summary) children.push(new Paragraph({ spacing: { line }, children: [new TextRun({ text: w.summary, size })] }));
-      w.highlights.forEach((h) => children.push(bullet(h)));
-    }
-  }
-  if (resume.projects.length) {
-    children.push(heading(L.projects));
-    for (const p of resume.projects) {
-      children.push(rowWithDate([new TextRun({ text: p.name, bold: true, size })]));
-      if (p.description) children.push(new Paragraph({ spacing: { line }, children: [new TextRun({ text: p.description, size })] }));
-      p.highlights.forEach((h) => children.push(bullet(h)));
-    }
-  }
-  if (resume.education.length) {
-    children.push(heading(L.education));
-    for (const e of resume.education) {
-      const degree = [e.studyType, e.area].filter(Boolean).join(", ");
-      children.push(
-        rowWithDate(
-          [
-            new TextRun({ text: degree || e.institution, bold: true, size }),
-            ...(degree ? [new TextRun({ text: `, ${e.institution}`, size })] : []),
-            ...(e.score ? [new TextRun({ text: ` (${e.score})`, size, color: "555555" })] : []),
-          ],
-          dates(e.startDate, e.endDate),
-        ),
-      );
-    }
-  }
-  if (resume.certificates.length) {
-    children.push(heading(L.certifications));
-    resume.certificates.forEach((c) => children.push(bullet(c, false)));
-  }
-  if (resume.languages.length) {
-    children.push(heading(L.languages), new Paragraph({ spacing: { line }, children: [new TextRun({ text: resume.languages.join(" · "), size })] }));
+    const c = resume.custom.find((x) => x.id === id);
+    if (!c || (!c.items.length && !c.text)) continue;
+    children.push(heading(c.title));
+    if (c.kind === "text") children.push(new Paragraph({ spacing: { line }, children: [new TextRun({ text: c.text ?? "", size })] }));
+    else c.items.forEach((it) => children.push(bullet(it, false)));
   }
 
   return new Document({

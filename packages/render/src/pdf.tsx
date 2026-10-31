@@ -1,5 +1,6 @@
-import { docLabels, localizeDate, splitMetrics, type DocLabels, type Resume } from "@cvtuner/core";
-import { Document, Font, Image, Link, Page, StyleSheet, Text, View, pdf } from "@react-pdf/renderer";
+import { docLabels, isHidden, localizeDate, sectionOrder, splitMetrics, type CustomSection, type DocLabels, type Resume } from "@cvtuner/core";
+import { Defs, Document, Font, Image, LinearGradient, Link, Page, Rect, Stop, StyleSheet, Svg, Text, View, pdf } from "@react-pdf/renderer";
+import type { ReactNode } from "react";
 import { TEMPLATES, type DocStyle, type LayoutOptions, type Theme } from "./options";
 
 // no mid-word hyphenation: it looks odd on a resume and splits keywords that ATS parsers look for
@@ -59,6 +60,24 @@ function Bullets({ items, s, boldMetrics }: { items: string[]; s: S; boldMetrics
     </>
   );
 }
+
+/** A gradient fill behind a block (react-pdf Views take only flat colours). */
+function GradientFill({ id, from, to, vertical, width, height }: { id: string; from: string; to: string; vertical?: boolean; width: number; height: number }) {
+  return (
+    <Svg width={width} height={height} style={{ position: "absolute", top: 0, left: 0 }}>
+      <Defs>
+        <LinearGradient id={id} x1="0" y1="0" x2={vertical ? "0" : "1"} y2={vertical ? "1" : "0"}>
+          <Stop offset="0" stopColor={from} />
+          <Stop offset="1" stopColor={to} />
+        </LinearGradient>
+      </Defs>
+      <Rect x="0" y="0" width={width} height={height} fill={`url(#${id})`} />
+    </Svg>
+  );
+}
+
+/** Sections that belong in the main column of sidebar templates. */
+const MAIN_IDS = new Set(["summary", "experience", "projects"]);
 
 const contactLines = (r: Resume) => [r.basics.email, r.basics.phone, r.basics.location, r.basics.url].filter((x): x is string => !!x);
 const isLink = (c: string) => /^https?:|\.com|\.in|\.io/.test(c) && !c.includes("@");
@@ -122,6 +141,19 @@ export function ResumeDocument({ resume, layout: o, style = {} }: { resume: Resu
     </View>
   );
 
+  // a gradient plate at the top of the main column holding name, title and summary (Spectrum)
+  const bandedMainHeader = t.mainBand ? (
+    <View style={{ marginTop: -o.margin * 0.4, marginRight: -o.margin * 0.8, padding: o.margin * 0.55, paddingRight: o.margin * 0.8, color: "#ffffff", overflow: "hidden" }}>
+      <GradientFill id="band" from={t.mainBand[0]} to={t.mainBand[1]} width={600} height={400} />
+      {/* text sits in its own view so the gradient layer never takes part in line layout */}
+      <View>
+        <Text style={[s.name, { color: "#ffffff", letterSpacing: 1.5, textTransform: "uppercase" }]}>{b.name}</Text>
+        {b.label ? <Text style={{ fontSize: o.fontSize * 1.1, letterSpacing: 2.2, marginTop: 3 }}>{b.label}</Text> : null}
+        {b.summary && !isHidden(resume, "summary") ? <Text style={{ marginTop: o.gap, fontSize: o.fontSize, lineHeight: o.lineHeight }}>{b.summary}</Text> : null}
+      </View>
+    </View>
+  ) : null;
+
   // ---------- sections ----------
   const Summary = b.summary ? (
     <View style={s.section}>
@@ -133,7 +165,7 @@ export function ResumeDocument({ resume, layout: o, style = {} }: { resume: Resu
   const skillGroups = resume.skills.filter((g) => g.keywords.length);
   const SkillsInline = skillGroups.length ? (
     <View style={s.section}>
-      <Heading text={L.skills} t={t} o={o} p={main} />
+      <Heading text={skillGroups.length === 1 && skillGroups[0]!.name !== "Skills" ? skillGroups[0]!.name : L.skills} t={t} o={o} p={main} />
       {skillGroups.map((g) => (
         <Text key={g.id}>
           {skillGroups.length > 1 ? <Text style={s.bold}>{g.name}: </Text> : null}
@@ -147,7 +179,8 @@ export function ResumeDocument({ resume, layout: o, style = {} }: { resume: Resu
     <View style={s.section}>
       <Heading text={L.experience} t={t} o={o} p={main} />
       {resume.work.map((w) => (
-        <View key={w.id} style={s.entry}>
+        <View key={w.id} style={[s.entry, t.timeline ? { borderLeftWidth: 1, borderLeftColor: t.accent, paddingLeft: 12, marginLeft: 3 } : {}]}>
+          {t.timeline ? <View style={{ position: "absolute", left: -4.5, top: 2, width: 8, height: 8, borderRadius: 4, backgroundColor: t.accent }} /> : null}
           <View style={s.row} wrap={false} minPresenceAhead={30}>
             <Text style={{ flex: 1 }}>
               <Text style={s.bold}>{w.position}</Text>
@@ -156,7 +189,7 @@ export function ResumeDocument({ resume, layout: o, style = {} }: { resume: Resu
             </Text>
             <Text style={{ color: main.muted, marginLeft: 8 }}>{dates(w.startDate, w.endDate)}</Text>
           </View>
-          {w.summary ? <Text>{w.summary}</Text> : null}
+          {w.summary ? <Text style={{ color: main.muted }}>{w.summary}</Text> : null}
           <Bullets items={w.highlights} s={s} boldMetrics={boldMetrics} />
         </View>
       ))}
@@ -185,6 +218,7 @@ export function ResumeDocument({ resume, layout: o, style = {} }: { resume: Resu
             <Text style={s.bold}>{[e.studyType, e.area].filter(Boolean).join(", ") || e.institution}</Text>
             {e.studyType || e.area ? <Text>, {e.institution}</Text> : null}
             {e.score ? <Text style={{ color: main.muted }}> ({e.score})</Text> : null}
+            {e.note ? <Text style={{ color: main.muted }}>. {e.note}</Text> : null}
           </Text>
           <Text style={{ color: main.muted, marginLeft: 8 }}>{dates(e.startDate, e.endDate)}</Text>
         </View>
@@ -206,19 +240,47 @@ export function ResumeDocument({ resume, layout: o, style = {} }: { resume: Resu
     </View>
   ) : null;
 
+  const CustomMain = (c: CustomSection) =>
+    c.items.length || c.text ? (
+      <View style={s.section}>
+        <Heading text={c.title} t={t} o={o} p={main} />
+        {c.kind === "text" ? <Text>{c.text}</Text> : <Bullets items={c.items} s={s} boldMetrics={false} />}
+      </View>
+    ) : null;
+
+  const order = sectionOrder(resume).filter((id) => !isHidden(resume, id));
+  const customOf = (id: string) => resume.custom.find((c) => c.id === id);
+  const mainSection = (id: string): ReactNode => {
+    switch (id) {
+      case "summary":
+        // the banded header of some templates already carries the summary
+        return t.summaryInHeader ? null : Summary;
+      case "skills":
+        return SkillsInline;
+      case "experience":
+        return Experience;
+      case "projects":
+        return Projects;
+      case "education":
+        return EducationMain;
+      case "certifications":
+        return CertsMain;
+      case "languages":
+        return LanguagesMain;
+      default: {
+        const c = customOf(id);
+        return c ? CustomMain(c) : null;
+      }
+    }
+  };
+
   // ---------- single column ----------
   if (!t.sidebar) {
     return (
       <Document title={b.name || "Resume"} author={b.name} creator="CVTuner" producer="CVTuner">
         <Page size="A4" style={[s.page, { padding: o.margin }]}>
           <View style={t.band ? { marginTop: -o.margin, marginHorizontal: -o.margin } : {}}>{header}</View>
-          {Summary}
-          {SkillsInline}
-          {Experience}
-          {Projects}
-          {EducationMain}
-          {CertsMain}
-          {LanguagesMain}
+          {order.map((id) => <View key={id}>{mainSection(id)}</View>)}
         </Page>
       </Document>
     );
@@ -232,6 +294,74 @@ export function ResumeDocument({ resume, layout: o, style = {} }: { resume: Resu
       {children}
     </View>
   );
+  const sideSection = (id: string): ReactNode => {
+    switch (id) {
+      case "skills":
+        return skillGroups.map((g) => (
+          <SideBlock key={g.id} title={skillGroups.length === 1 && g.name === "Skills" ? L.skills : g.name}>
+            {/* comma lists read better than one skill per line once there are many */}
+            {g.keywords.length > 10 ? (
+              <Text>{g.keywords.join(", ")}</Text>
+            ) : (
+              g.keywords.map((k, i) => (
+                <Text key={i} style={{ marginBottom: 1.5 }}>
+                  {k}
+                </Text>
+              ))
+            )}
+          </SideBlock>
+        ));
+      case "languages":
+        return resume.languages.length ? (
+          <SideBlock title={L.languages}>
+            {resume.languages.map((l, i) => (
+              <Text key={i}>{l}</Text>
+            ))}
+          </SideBlock>
+        ) : null;
+      case "education":
+        return resume.education.length ? (
+          <SideBlock title={L.education}>
+            {resume.education.map((e) => (
+              <View key={e.id} style={{ marginBottom: o.gap * 0.6 }} wrap={false}>
+                <Text style={s.bold}>{[e.studyType, e.area].filter(Boolean).join(", ") || e.institution}</Text>
+                {e.studyType || e.area ? <Text>{e.institution}</Text> : null}
+                {e.note ? <Text style={{ color: side.muted }}>{e.note}</Text> : null}
+                {e.startDate || e.endDate ? <Text style={{ color: side.muted }}>{dates(e.startDate, e.endDate)}</Text> : null}
+              </View>
+            ))}
+          </SideBlock>
+        ) : null;
+      case "certifications":
+        return resume.certificates.length ? (
+          <SideBlock title={L.certifications}>
+            {resume.certificates.map((c, i) => (
+              <Text key={i} style={[s.bold, { marginBottom: 2 }]}>
+                {c}
+              </Text>
+            ))}
+          </SideBlock>
+        ) : null;
+      default: {
+        const c = customOf(id);
+        if (!c || (!c.items.length && !c.text)) return null;
+        return (
+          <SideBlock title={c.title}>
+            {c.kind === "text" ? (
+              <Text>{c.text}</Text>
+            ) : (
+              c.items.map((it, i) => (
+                <Text key={i} style={{ marginBottom: 2 }}>
+                  {it}
+                </Text>
+              ))
+            )}
+          </SideBlock>
+        );
+      }
+    }
+  };
+  const inMain = (id: string) => MAIN_IDS.has(id) || customOf(id)?.placement === "main";
   const sidebar = (
     <View style={{ width: sideW, paddingHorizontal: 16, paddingTop: t.band ? 4 : 0, color: side.fg, fontSize: o.fontSize * 0.95 }}>
       {contact.length ? (
@@ -249,50 +379,17 @@ export function ResumeDocument({ resume, layout: o, style = {} }: { resume: Resu
           ))}
         </SideBlock>
       ) : null}
-      {skillGroups.length ? (
-        <SideBlock title={L.skills}>
-          {skillGroups.flatMap((g) => g.keywords).map((k, i) => (
-            <Text key={i} style={{ marginBottom: 1.5 }}>
-              {k}
-            </Text>
-          ))}
-        </SideBlock>
-      ) : null}
-      {resume.languages.length ? (
-        <SideBlock title={L.languages}>
-          {resume.languages.map((l, i) => (
-            <Text key={i}>{l}</Text>
-          ))}
-        </SideBlock>
-      ) : null}
-      {resume.education.length ? (
-        <SideBlock title={L.education}>
-          {resume.education.map((e) => (
-            <View key={e.id} style={{ marginBottom: o.gap * 0.6 }} wrap={false}>
-              <Text style={s.bold}>{[e.studyType, e.area].filter(Boolean).join(", ") || e.institution}</Text>
-              {e.studyType || e.area ? <Text>{e.institution}</Text> : null}
-              <Text style={{ color: side.muted }}>{dates(e.startDate, e.endDate)}</Text>
-            </View>
-          ))}
-        </SideBlock>
-      ) : null}
-      {resume.certificates.length ? (
-        <SideBlock title={L.certifications}>
-          {resume.certificates.map((c, i) => (
-            <Text key={i} style={{ marginBottom: 2 }}>
-              {c}
-            </Text>
-          ))}
-        </SideBlock>
-      ) : null}
+      {order.filter((id) => !inMain(id)).map((id) => (
+        <View key={id}>{sideSection(id)}</View>
+      ))}
     </View>
   );
   const mainCol = (
     <View style={{ flex: 1, paddingHorizontal: o.margin * 0.8 }}>
-      {!t.band ? <View style={{ marginBottom: o.gap * 0.5 }}>{header}</View> : null}
-      {Summary}
-      {Experience}
-      {Projects}
+      {!t.band ? <View style={{ marginBottom: o.gap * 0.5 }}>{t.mainBand ? bandedMainHeader : header}</View> : null}
+      {order.filter(inMain).map((id) => (
+        <View key={id}>{mainSection(id)}</View>
+      ))}
     </View>
   );
   const light = sb.bg.toLowerCase() === "#ffffff";
@@ -304,14 +401,17 @@ export function ResumeDocument({ resume, layout: o, style = {} }: { resume: Resu
           fixed
           style={{
             position: "absolute",
+            overflow: "hidden",
             top: 0,
             bottom: 0,
             [sb.side]: 0,
             width: sideW,
-            backgroundColor: sb.bg,
+            backgroundColor: sb.gradient ? sb.gradient[1] : sb.bg,
             ...(light ? { [sb.side === "right" ? "borderLeftWidth" : "borderRightWidth"]: 0.75, [sb.side === "right" ? "borderLeftColor" : "borderRightColor"]: "#e5e5e5" } : {}),
           }}
-        />
+        >
+          {sb.gradient ? <GradientFill id="side" from={sb.gradient[0]} to={sb.gradient[1]} vertical width={sideW} height={842} /> : null}
+        </View>
         {t.band ? <View style={{ marginTop: -o.margin }}>{header}</View> : null}
         <View style={{ flexDirection: sb.side === "left" ? "row" : "row-reverse" }}>
           {sidebar}

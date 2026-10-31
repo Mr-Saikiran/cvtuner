@@ -13,3 +13,4 @@ export * from "./jobsource";
 export * from "./metrics";
 export * from "./ats";
 export * from "./jobsearch";
+export * from "./pdfLayout";

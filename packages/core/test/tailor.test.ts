@@ -70,7 +70,7 @@ SQL, Python, Tableau, Excel`);
     expect(r.work[0]).toMatchObject({ position: "Senior Data Analyst", name: "Globex", startDate: "Jan 2020", endDate: "Present" });
     expect(r.work[0]!.highlights).toHaveLength(2);
     expect(r.skills[0]!.keywords).toEqual(["SQL", "Python", "Tableau", "Excel"]);
-    expect(r.education[0]).toMatchObject({ institution: "State University", area: "BSc Statistics" });
+    expect(r.education[0]).toMatchObject({ institution: "State University", studyType: "BSc", area: "Statistics", endDate: "2016" });
   });
   it("finds the name in sidebar-first PDFs using the email", () => {
     const r = parseResumeText(`CONTACT\nasha.rao@example.com\nHyderabad, India\nSKILLS\nSAP, Excel\nAsha Rao\nProcurement Manager\nEXPERIENCE\nBuyer at Acme 2020 - Present\n- Ran sourcing`);

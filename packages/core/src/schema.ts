@@ -20,6 +20,8 @@ export const EducationSchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   score: z.string().optional(),
+  /** extra line, e.g. "Evaluated by World Education Services" */
+  note: z.string().optional(),
 });
 
 export const ProjectSchema = z.object({
@@ -35,6 +37,28 @@ export const SkillGroupSchema = z.object({
   name: z.string().default("Skills"),
   keywords: z.array(z.string()).default([]),
 });
+
+/** A section the user adds: Achievements, Declaration, Volunteering, Publications… */
+export const CustomSectionSchema = z.object({
+  id: z.string(),
+  title: z.string().default("Section"),
+  kind: z.enum(["list", "text"]).default("list"),
+  items: z.array(z.string()).default([]),
+  text: z.string().optional(),
+  /** "side" goes to the sidebar in sidebar templates; single-column templates show it in the flow */
+  placement: z.enum(["main", "side"]).default("main"),
+});
+
+/** Built-in sections, in their default order. */
+export const BUILTIN_SECTIONS = [
+  { id: "summary", label: "Summary" },
+  { id: "skills", label: "Skills" },
+  { id: "experience", label: "Experience" },
+  { id: "projects", label: "Projects" },
+  { id: "education", label: "Education" },
+  { id: "certifications", label: "Certifications" },
+  { id: "languages", label: "Languages" },
+] as const;
 
 export const ResumeSchema = z.object({
   basics: z.object({
@@ -55,6 +79,9 @@ export const ResumeSchema = z.object({
   certificates: z.array(z.string()).default([]),
   /** spoken languages, e.g. "English (fluent)" */
   languages: z.array(z.string()).default([]),
+  custom: z.array(CustomSectionSchema).default([]),
+  /** section order and visibility; ids are built-in ids or custom section ids */
+  layout: z.object({ order: z.array(z.string()).default([]), hidden: z.array(z.string()).default([]) }).default({ order: [], hidden: [] }),
 });
 
 export type Work = z.infer<typeof WorkSchema>;
@@ -62,6 +89,22 @@ export type Education = z.infer<typeof EducationSchema>;
 export type Project = z.infer<typeof ProjectSchema>;
 export type SkillGroup = z.infer<typeof SkillGroupSchema>;
 export type Resume = z.infer<typeof ResumeSchema>;
+export type CustomSection = z.infer<typeof CustomSectionSchema>;
+
+/** All section ids in display order: the saved order first, then anything new. */
+export function sectionOrder(r: Resume): string[] {
+  const all = [...BUILTIN_SECTIONS.map((b) => b.id as string), ...r.custom.map((c) => c.id)];
+  const saved = r.layout.order.filter((id) => all.includes(id));
+  return [...saved, ...all.filter((id) => !saved.includes(id))];
+}
+
+export function isHidden(r: Resume, id: string): boolean {
+  return r.layout.hidden.includes(id);
+}
+
+export function sectionTitle(r: Resume, id: string): string {
+  return r.custom.find((c) => c.id === id)?.title ?? BUILTIN_SECTIONS.find((b) => b.id === id)?.label ?? id;
+}
 
 let counter = 0;
 export function newId(prefix = "id"): string {
@@ -87,6 +130,7 @@ export function parseResume(input: unknown): Resume {
     education: withIds(raw.education, "edu"),
     projects: withIds(raw.projects, "proj"),
     skills: withIds(raw.skills, "skill"),
+    custom: withIds(raw.custom, "sec"),
   });
 }
 
@@ -104,6 +148,7 @@ export function resumeText(resume: Resume): string {
     ...resume.education.flatMap((e) => [e.area, e.studyType]),
     ...allSkills(resume),
     ...resume.certificates,
+    ...resume.custom.flatMap((c) => [c.title, ...c.items, c.text]),
   ]
     .filter(Boolean)
     .join("\n");

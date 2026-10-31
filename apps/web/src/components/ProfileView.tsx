@@ -1,6 +1,6 @@
 "use client";
 
-import { emptyResume, newId, parseResumeText, sampleResume, type Education, type Project, type Resume } from "@cvtuner/core";
+import { emptyResume, isHidden, newId, parseResumeText, sampleResume, sectionOrder, sectionTitle, type CustomSection, type Education, type Project, type Resume } from "@cvtuner/core";
 import { useEffect, useRef, useState } from "react";
 import { downloadBlob } from "@/lib/files";
 import { Button, Card } from "./ui";
@@ -138,6 +138,8 @@ export function ProfileView({ profile, setProfile, onNext }: Props) {
         </div>
       </Card>
 
+      <SectionsCard draft={draft} set={set} />
+
       <Card title="Basics">
         <PhotoField image={draft.basics.image} onChange={(img) => set((r) => void (r.basics.image = img))} />
         <div className="grid gap-3 sm:grid-cols-2">
@@ -178,21 +180,46 @@ export function ProfileView({ profile, setProfile, onNext }: Props) {
         </div>
       </Card>
 
-      <Card title="Skills">
-        {(draft.skills.length ? draft.skills : [{ id: "new", name: "Skills", keywords: [] }]).map((g, i) => (
-          <Area
-            key={g.id}
-            label={draft.skills.length > 1 ? g.name : "Skills (comma separated)"}
-            value={g.keywords.join(", ")}
-            onChange={(v) =>
-              set((r) => {
-                if (!r.skills[i]) r.skills[i] = { id: newId("skill"), name: "Skills", keywords: [] };
-                r.skills[i]!.keywords = v.split(/,\s*/).map((s) => s.trim()).filter(Boolean);
-              })
-            }
-            commitOnBlur
-          />
-        ))}
+      <Card
+        title="Skills"
+        actions={<Button onClick={() => set((r) => void r.skills.push({ id: newId("skill"), name: r.skills.length ? "Tech Stack" : "Skills", keywords: [] }))}>Add skill group</Button>}
+      >
+        <div className="flex flex-col gap-4">
+          {(draft.skills.length ? draft.skills : [{ id: "new", name: "Skills", keywords: [] }]).map((g, i) => (
+            <div key={g.id} className="border-rule flex flex-col gap-2 border-b pb-4 last:border-b-0 last:pb-0">
+              <div className="flex items-end gap-2">
+                <div className="max-w-xs flex-1">
+                  <Field
+                    label="Group name"
+                    value={g.name}
+                    onChange={(v) =>
+                      set((r) => {
+                        if (!r.skills[i]) r.skills[i] = { id: newId("skill"), name: "Skills", keywords: [] };
+                        r.skills[i]!.name = v;
+                      })
+                    }
+                  />
+                </div>
+                {draft.skills.length > 1 ? (
+                  <Button variant="danger" onClick={() => set((r) => void r.skills.splice(i, 1))}>
+                    Remove group
+                  </Button>
+                ) : null}
+              </div>
+              <Area
+                label="Comma separated"
+                value={g.keywords.join(", ")}
+                onChange={(v) =>
+                  set((r) => {
+                    if (!r.skills[i]) r.skills[i] = { id: newId("skill"), name: "Skills", keywords: [] };
+                    r.skills[i]!.keywords = v.split(/,(?![^()]*\))\s*/).map((x) => x.trim()).filter(Boolean);
+                  })
+                }
+                commitOnBlur
+              />
+            </div>
+          ))}
+        </div>
       </Card>
 
       <Card
@@ -208,6 +235,7 @@ export function ProfileView({ profile, setProfile, onNext }: Props) {
                 <Field label="Degree" value={e.studyType} onChange={(v) => set((r) => void (r.education[i]!.studyType = v))} placeholder="B.Tech, MBA, BSc" />
                 <Field label="Field" value={e.area} onChange={(v) => set((r) => void (r.education[i]!.area = v))} />
                 <Field label="Year" value={e.endDate} onChange={(v) => set((r) => void (r.education[i]!.endDate = v))} />
+                <Field label="Note (optional)" value={e.note} onChange={(v) => set((r) => void (r.education[i]!.note = v || undefined))} placeholder="e.g. Evaluated by WES" />
               </div>
             </Entry>
           ))}
@@ -237,6 +265,43 @@ export function ProfileView({ profile, setProfile, onNext }: Props) {
       <Card title="Languages">
         <Lines label="One per line, e.g. English (fluent)" value={draft.languages} onChange={(v) => set((r) => void (r.languages = v))} />
       </Card>
+
+      {draft.custom.map((c, i) => (
+        <Card
+          key={c.id}
+          title={c.title || "Untitled section"}
+          actions={
+            <Button variant="danger" onClick={() => confirm(`Remove the “${c.title}” section?`) && set((r) => void removeCustom(r, c.id))}>
+              Remove section
+            </Button>
+          }
+        >
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Field label="Section title" value={c.title} onChange={(v) => set((r) => void (r.custom[i]!.title = v))} />
+            <label className="flex flex-col gap-1">
+              <span className="field-label">Content</span>
+              <select className="field" value={c.kind} onChange={(e) => set((r) => void (r.custom[i]!.kind = e.target.value as CustomSection["kind"]))}>
+                <option value="list">List, one item per line</option>
+                <option value="text">Paragraph</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="field-label">Place in sidebar templates</span>
+              <select className="field" value={c.placement} onChange={(e) => set((r) => void (r.custom[i]!.placement = e.target.value as CustomSection["placement"]))}>
+                <option value="main">Main column</option>
+                <option value="side">Sidebar</option>
+              </select>
+            </label>
+          </div>
+          <div className="mt-3">
+            {c.kind === "list" ? (
+              <Lines label="Items, one per line" value={c.items} onChange={(v) => set((r) => void (r.custom[i]!.items = v))} />
+            ) : (
+              <Area label="Text" value={c.text} onChange={(v) => set((r) => void (r.custom[i]!.text = v))} />
+            )}
+          </div>
+        </Card>
+      ))}
           {/* the save bar: always in reach, above the phone tab bar */}
       <div className="bg-plate fixed inset-x-0 bottom-[calc(48px+env(safe-area-inset-bottom))] z-[150] border-t-2 border-ink sm:bottom-0">
         <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
@@ -275,6 +340,121 @@ export function ProfileView({ profile, setProfile, onNext }: Props) {
         </div>
       </div>
 </div>
+  );
+}
+
+function removeCustom(r: Resume, id: string) {
+  r.custom = r.custom.filter((c) => c.id !== id);
+  r.layout.order = r.layout.order.filter((x) => x !== id);
+  r.layout.hidden = r.layout.hidden.filter((x) => x !== id);
+}
+
+const SUGGESTED = ["Achievements", "Declaration", "Awards", "Volunteering", "Publications", "Interests", "References"];
+
+/** Show, hide, reorder, add and remove the sections of the resume. Applies to PDF and Word. */
+function SectionsCard({ draft, set }: { draft: Resume; set: (fn: (r: Resume) => void) => void }) {
+  const [title, setTitle] = useState("");
+  const [kind, setKind] = useState<CustomSection["kind"]>("list");
+  const [placement, setPlacement] = useState<CustomSection["placement"]>("main");
+  const order = sectionOrder(draft);
+  const move = (i: number, d: -1 | 1) =>
+    set((r) => {
+      const o = sectionOrder(r);
+      const j = i + d;
+      if (j < 0 || j >= o.length) return;
+      [o[i], o[j]] = [o[j]!, o[i]!];
+      r.layout.order = o;
+    });
+  const add = (name = title) => {
+    const t = name.trim();
+    if (!t) return;
+    set((r) => {
+      const id = newId("sec");
+      r.custom.push({ id, title: t, kind: /declaration|summary|objective/i.test(t) ? "text" : kind, items: [], placement: /achievement|award|interest|hobb/i.test(t) ? "side" : placement });
+      r.layout.order = [...sectionOrder(r).filter((x) => x !== id), id];
+    });
+    setTitle("");
+  };
+  return (
+    <Card title="Sections">
+      <p className="text-muted mb-3 max-w-[65ch] text-sm">
+        Choose which sections appear in your resume and in what order. Hidden sections keep their content; they are just left out of the PDF and Word file.
+      </p>
+      <ol className="flex flex-col">
+        {order.map((id, i) => {
+          const hidden = isHidden(draft, id);
+          const custom = draft.custom.some((c) => c.id === id);
+          return (
+            <li key={id} className={`border-rule flex flex-wrap items-center justify-between gap-2 border-b py-2 last:border-b-0 ${hidden ? "opacity-55" : ""}`}>
+              <span className="flex items-center gap-3 text-sm">
+                <span className="code text-muted w-5">{i + 1}</span>
+                <span className="font-medium">{sectionTitle(draft, id)}</span>
+                {custom ? <span className="text-muted text-xs">custom</span> : null}
+                {hidden ? <span className="text-warn text-xs">hidden</span> : null}
+              </span>
+              <span className="flex flex-wrap gap-1">
+                <Button variant="ghost" onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Move ${sectionTitle(draft, id)} up`}>
+                  ↑
+                </Button>
+                <Button variant="ghost" onClick={() => move(i, 1)} disabled={i === order.length - 1} aria-label={`Move ${sectionTitle(draft, id)} down`}>
+                  ↓
+                </Button>
+                <Button
+                  onClick={() =>
+                    set((r) => {
+                      r.layout.hidden = hidden ? r.layout.hidden.filter((x) => x !== id) : [...r.layout.hidden, id];
+                    })
+                  }
+                >
+                  {hidden ? "Show" : "Hide"}
+                </Button>
+                {custom ? (
+                  <Button variant="danger" onClick={() => confirm(`Remove the “${sectionTitle(draft, id)}” section?`) && set((r) => void removeCustom(r, id))}>
+                    Remove
+                  </Button>
+                ) : null}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+      <form
+        className="border-rule mt-4 grid gap-2 border-t pt-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end"
+        onSubmit={(e) => {
+          e.preventDefault();
+          add();
+        }}
+      >
+        <Field label="New section" value={title} onChange={setTitle} placeholder="e.g. Achievements" />
+        <label className="flex flex-col gap-1">
+          <span className="field-label">Content</span>
+          <select className="field" value={kind} onChange={(e) => setKind(e.target.value as CustomSection["kind"])}>
+            <option value="list">List</option>
+            <option value="text">Paragraph</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="field-label">In sidebar templates</span>
+          <select className="field" value={placement} onChange={(e) => setPlacement(e.target.value as CustomSection["placement"])}>
+            <option value="main">Main column</option>
+            <option value="side">Sidebar</option>
+          </select>
+        </label>
+        <Button type="submit" variant="primary" disabled={!title.trim()}>
+          Add section
+        </Button>
+      </form>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {SUGGESTED.filter((t) => !draft.custom.some((c) => c.title.toLowerCase() === t.toLowerCase())).map((t) => (
+          <button key={t} type="button" className="chip" onClick={() => add(t)}>
+            <span className="code" aria-hidden>
+              +
+            </span>
+            {t}
+          </button>
+        ))}
+      </div>
+    </Card>
   );
 }
 
