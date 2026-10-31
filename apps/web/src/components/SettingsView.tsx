@@ -3,9 +3,9 @@ import { Badge, Card, Segmented } from "./ui";
 
 export function SettingsView({ settings, setSettings }: { settings: Settings; setSettings: (s: Settings) => void }) {
   return (
-    <div className="grid max-w-3xl gap-4">
+    <div className="mx-auto grid max-w-5xl gap-6">
       <Card title="Writing">
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col">
           <Row label="Sentence voice" hint="Passive: “Vendor contracts were managed.” Action verbs: “Managed vendor contracts.” Recruiters often prefer action verbs.">
             <Segmented
               label="Sentence voice"
@@ -30,13 +30,21 @@ export function SettingsView({ settings, setSettings }: { settings: Settings; se
           </Row>
         </div>
       </Card>
-      <Card title={<span className="flex items-center gap-2">AI providers <Badge tone="brand">Phase 2</Badge></span>}>
-        <p className="muted text-sm">
+
+      <Card
+        title={
+          <span className="flex items-center gap-2">
+            AI providers <Badge tone="brand">Phase 2</Badge>
+          </span>
+        }
+      >
+        <p className="text-muted max-w-[65ch] text-sm">
           Bring your own key for Anthropic, OpenAI, Gemini or a local model (Ollama, LM Studio). The rule engine keeps working without any key.
         </p>
       </Card>
+
       <Card title="Your data">
-        <p className="muted text-sm">
+        <p className="text-muted max-w-[65ch] text-sm">
           Your profile and saved versions are stored only in this browser. Imported files are read once to extract text and are not kept.
         </p>
       </Card>
@@ -46,10 +54,10 @@ export function SettingsView({ settings, setSettings }: { settings: Settings; se
 
 function Row({ label, hint, children }: { label: string; hint: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div className="border-rule flex flex-col gap-3 border-b py-4 first:pt-0 last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
       <div className="max-w-md">
         <p className="text-sm font-medium">{label}</p>
-        <p className="muted text-xs">{hint}</p>
+        <p className="text-muted text-xs">{hint}</p>
       </div>
       {children}
     </div>

@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useDraftJd, type SavedJob, type Settings } from "@/lib/store";
 import { JdHighlight } from "./JdHighlight";
 import { Preview } from "./Preview";
-import { Badge, Button, Card, ScoreRing, Segmented } from "./ui";
+import { Button, Card, Score, Segmented } from "./ui";
 
 interface Props {
   profile: Resume;
@@ -93,10 +93,12 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave }: 
 
   const covered = result?.keywords.filter((k) => k.coverage === "covered") ?? [];
   const missing = result?.keywords.filter((k) => k.coverage === "missing") ?? [];
+  const words = draft.trim() ? draft.trim().split(/\s+/).length : 0;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-      <div className="flex min-w-0 flex-col gap-4">
+    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-8">
+      {/* the JD and the match stay in view while the long Changes list scrolls */}
+      <div className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-6">
         <Card
           title="Job description"
           actions={
@@ -108,86 +110,110 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave }: 
                   onChange={setMode}
                   options={[
                     { value: "edit", label: "Edit" },
-                    { value: "highlight", label: "Highlights" },
+                    { value: "highlight", label: "Marked" },
                   ]}
                 />
               ) : null}
-              {!draft ? (
-                <Button variant="ghost" onClick={() => setDraft(SAMPLE_JD)}>
-                  Try a sample
-                </Button>
-              ) : null}
+              {words ? (
+                <span className="code text-muted">{words} words</span>
+              ) : (
+                <span className="text-muted text-xs">nothing pasted yet</span>
+              )}
             </>
           }
         >
-          <div className="mb-3 flex gap-2">
+          <div className="mb-3">
             <input
               className="field"
               type="url"
-              placeholder="Job link (LinkedIn, Naukri, Greenhouse…) — coming in Phase 2"
+              placeholder="Job link (LinkedIn, Naukri, Greenhouse). Coming in Phase 2."
               disabled
               aria-label="Job link (coming soon)"
             />
           </div>
           {mode === "edit" || !result ? (
             <textarea
-              className="field min-h-[260px] resize-y font-mono text-[13px] leading-relaxed lg:min-h-[340px]"
-              placeholder="Paste the full job description here — responsibilities, requirements, nice-to-haves. Any field works: nursing, finance, sales, software…"
+              className="field min-h-[280px] resize-y text-sm leading-relaxed lg:min-h-[360px]"
+              placeholder="Paste the full job description here: responsibilities, requirements, nice-to-haves. Any field works: nursing, finance, sales, software."
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               aria-label="Job description"
             />
           ) : (
-            <JdHighlight text={analyzed} keywords={result.keywords} />
+            <>
+              <JdHighlight text={analyzed} keywords={result.keywords} />
+              {/* the marking is not colour alone: say what each one means */}
+              <p className="text-muted border-rule mt-2 flex flex-wrap gap-x-4 gap-y-1 border-t pt-2 text-xs">
+                <span>
+                  <mark className="kw-covered">In your resume</mark>
+                </span>
+                <span>
+                  <mark className="kw-missing">Missing</mark>
+                </span>
+                <span>
+                  <mark className="kw-confirmed">Confirmed by you</mark>
+                </span>
+              </p>
+            </>
           )}
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-            <span className="muted text-xs">{draft.trim() ? `${draft.trim().split(/\s+/).length} words` : "Nothing pasted yet"}</span>
-            <div className="flex gap-2">
-              {draft ? (
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    setDraft("");
-                    setAnalyzed("");
-                    setConfirmed([]);
-                    setOverrides({});
-                    setJobId(null);
-                    setMode("edit");
-                  }}
-                >
-                  Clear
-                </Button>
-              ) : null}
-              <Button variant="primary" onClick={analyze} disabled={!draft.trim()}>
-                {analyzed && analyzed === draft ? "Re-tune" : "Tune my resume"}
+          <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+            {!draft ? (
+              <Button variant="ghost" onClick={() => setDraft(SAMPLE_JD)}>
+                Try a sample
               </Button>
-            </div>
+            ) : (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setDraft("");
+                  setAnalyzed("");
+                  setConfirmed([]);
+                  setOverrides({});
+                  setJobId(null);
+                  setMode("edit");
+                }}
+              >
+                Clear
+              </Button>
+            )}
+            {/* the fill moves to the download once there is something to download */}
+            <Button variant={result ? "secondary" : "primary"} onClick={analyze} disabled={!draft.trim()}>
+              {analyzed && analyzed === draft ? "Re-tune" : "Tune my resume"}
+            </Button>
           </div>
         </Card>
 
         {result ? (
           <Card title="Match">
-            <div className="flex flex-wrap items-center gap-6">
-              <ScoreRing value={result.score} label={<>Keyword match<br />before tuning</>} />
-              {result.projectedScore > result.score ? <ScoreRing value={result.projectedScore} label="After tuning" /> : null}
+            <div className="flex flex-wrap items-end gap-8">
+              <Score value={result.score} label={<>Keyword match, before tuning</>} />
+              {result.projectedScore > result.score ? <Score value={result.projectedScore} label="After tuning" /> : null}
               <div className="min-w-0 flex-1 text-sm">
                 {result.jd.title ? <p className="font-medium">{result.jd.title}</p> : null}
-                {result.jd.company ? <p className="muted">{result.jd.company}</p> : null}
+                {result.jd.company ? <p className="text-muted">{result.jd.company}</p> : null}
               </div>
             </div>
+
             {covered.length ? (
-              <div className="mt-4">
-                <p className="muted mb-1.5 text-xs font-medium uppercase tracking-wide">You have</p>
+              <div className="border-rule mt-6 border-t pt-4">
+                <p className="text-muted mb-2 text-xs font-medium">
+                  In your resume <span className="code">{covered.length}</span>
+                </p>
                 <div className="flex flex-wrap gap-1.5">
                   {covered.map((k) => (
-                    <Badge key={k.name} tone="good">{k.name}</Badge>
+                    <span key={k.name} className="chip">
+                      {k.name}
+                    </span>
                   ))}
                 </div>
               </div>
             ) : null}
+
             {missing.length ? (
-              <div className="mt-4">
-                <p className="muted mb-1.5 text-xs font-medium uppercase tracking-wide">Missing from your resume — tap the ones you really have</p>
+              <div className="border-rule mt-5 border-t pt-4">
+                <p className="text-muted mb-2 text-xs font-medium">
+                  Missing from your resume <span className="code">{missing.length}</span>. Tap the ones you really have.
+                </p>
                 <div className="flex flex-wrap gap-1.5">
                   {missing.map((k) => (
                     <button
@@ -195,27 +221,28 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave }: 
                       type="button"
                       onClick={() => toggleConfirm(k)}
                       aria-pressed={k.confirmed}
-                      className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors ${
-                        k.confirmed ? "border-amber-500 bg-amber-500/15 text-amber-700 dark:text-amber-400" : "border-red-500/40 text-red-700 hover:bg-red-500/10 dark:text-red-400"
-                      }`}
+                      className={`chip ${k.confirmed ? "chip--confirmed" : "chip--missing"}`}
                     >
-                      {k.confirmed ? "✓ " : "+ "}
+                      <span className="code" aria-hidden>
+                        {k.confirmed ? "✓" : "+"}
+                      </span>
                       {k.name}
                     </button>
                   ))}
                 </div>
-                <p className="muted mt-2 text-xs">CVTuner never adds a skill you have not confirmed.</p>
+                <p className="text-muted mt-3 text-xs">CVTuner never adds a skill you have not confirmed.</p>
               </div>
             ) : null}
           </Card>
         ) : null}
       </div>
 
-      <div className="flex min-w-0 flex-col gap-4">
+      <div className="flex min-w-0 flex-col gap-6">
         {result ? (
           <>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <span className="text-muted text-xs">Sentence voice</span>
                 <Segmented
                   label="Sentence voice"
                   value={settings.voice}
@@ -229,6 +256,7 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave }: 
                     { value: "active", label: "Action verbs" },
                   ]}
                 />
+                <span className="text-muted text-xs">Page limit</span>
                 <Segmented
                   label="Page limit"
                   value={settings.maxPages}
@@ -249,16 +277,16 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave }: 
                 onChange={setMobilePane}
                 options={[
                   { value: "changes", label: `Changes (${suggestions.filter((s) => s.accepted).length})` },
-                  { value: "preview", label: "Preview & download" },
+                  { value: "preview", label: "Preview" },
                 ]}
               />
             </div>
 
-            <div className={mobilePane === "changes" ? "" : "hidden lg:block"}>
-              <Changes suggestions={suggestions} onChange={setOverride} />
-            </div>
             <div className={mobilePane === "preview" ? "" : "hidden lg:block"}>
               <Preview resume={tuned} maxPages={settings.maxPages} keywords={keywords} protect={protect} title={result.jd.title} company={result.jd.company} />
+            </div>
+            <div className={mobilePane === "changes" ? "" : "hidden lg:block"}>
+              <Changes suggestions={suggestions} onChange={setOverride} />
             </div>
           </>
         ) : (
@@ -273,7 +301,7 @@ function Changes({ suggestions, onChange }: { suggestions: Suggestion[]; onChang
   if (!suggestions.length) {
     return (
       <Card title="Changes">
-        <p className="muted text-sm">
+        <p className="text-muted text-sm">
           No safe changes found. Add more detail to your profile, or confirm missing skills you actually have.
         </p>
       </Card>
@@ -282,40 +310,48 @@ function Changes({ suggestions, onChange }: { suggestions: Suggestion[]; onChang
   const bullets = suggestions.filter((s) => s.kind === "add-bullet");
   const other = suggestions.filter((s) => s.kind !== "add-bullet");
   return (
-    <Card title="Changes" actions={<span className="muted text-xs">Untick anything you don&apos;t want</span>}>
-      <ul className="flex flex-col gap-3">
+    <Card title="Changes" actions={<span className="text-muted text-xs">Untick anything you don&apos;t want</span>}>
+      <ul className="flex flex-col">
         {bullets.map((s) =>
           s.kind === "add-bullet" ? (
-            <li key={keyOf(s)} className={`rounded-xl border p-3 ${s.accepted ? "border-green-500/40 bg-green-500/5" : "border-[var(--border)] opacity-60"}`}>
-              <div className="flex items-start gap-3">
-                <input type="checkbox" className="mt-1 size-4 accent-[var(--color-brand-600)]" checked={s.accepted} onChange={(e) => onChange(s, { accepted: e.target.checked })} aria-label="Include this line" />
-                <div className="min-w-0 flex-1">
-                  <p className="muted mb-1 text-xs">
-                    <span className="font-medium text-green-700 dark:text-green-400">+ New line</span> in {s.targetLabel}
-                  </p>
-                  <textarea
-                    className="field min-h-[3.5rem] resize-y text-sm"
-                    value={s.text}
-                    onChange={(e) => onChange(s, { text: e.target.value })}
-                    aria-label="Edit the new line"
-                  />
-                  <p className="muted mt-1 truncate text-xs" title={s.source}>
-                    From JD: “{s.source}”
-                  </p>
-                </div>
+            <li
+              key={keyOf(s)}
+              className={`border-rule flex items-start gap-3 border-b py-4 first:pt-0 ${s.accepted ? "" : "opacity-55"}`}
+            >
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={s.accepted}
+                onChange={(e) => onChange(s, { accepted: e.target.checked })}
+                aria-label="Include this line"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-muted mb-1.5 text-xs">
+                  {/* core joins position and company with a middle dot; 63 bans that on the page */}
+                  New line in <span className="text-ink font-medium">{s.targetLabel.replace(" · ", " at ")}</span>
+                </p>
+                <textarea
+                  className="field min-h-[3.5rem] resize-y text-sm"
+                  value={s.text}
+                  onChange={(e) => onChange(s, { text: e.target.value })}
+                  aria-label="Edit the new line"
+                />
+                <p className="text-muted mt-1.5 truncate text-xs" title={s.source}>
+                  From JD: “{s.source}”
+                </p>
               </div>
             </li>
           ) : null,
         )}
         {other.map((s) => (
-          <li key={keyOf(s)} className={`rounded-xl border p-3 ${s.accepted ? "border-brand-500/40 bg-brand-500/5" : "border-[var(--border)] opacity-60"}`}>
+          <li key={keyOf(s)} className={`border-rule border-b py-4 last:border-b-0 ${s.accepted ? "" : "opacity-55"}`}>
             <label className="flex items-start gap-3">
-              <input type="checkbox" className="mt-1 size-4 accent-[var(--color-brand-600)]" checked={s.accepted} onChange={(e) => onChange(s, { accepted: e.target.checked })} />
+              <input type="checkbox" className="mt-0.5" checked={s.accepted} onChange={(e) => onChange(s, { accepted: e.target.checked })} />
               <span className="min-w-0 flex-1 text-sm">
                 {s.kind === "reorder-skills" && (
                   <>
                     <span className="font-medium">Reorder skills</span> so the ones in this JD come first:{" "}
-                    <span className="muted">{s.order.slice(0, 6).join(", ")}…</span>
+                    <span className="text-muted">{s.order.slice(0, 6).join(", ")}…</span>
                   </>
                 )}
                 {s.kind === "add-skills" && (
@@ -325,7 +361,7 @@ function Changes({ suggestions, onChange }: { suggestions: Suggestion[]; onChang
                 )}
                 {s.kind === "summary" && (
                   <>
-                    <span className="font-medium">Add to summary:</span> <span className="muted">{s.text}</span>
+                    <span className="font-medium">Add to summary:</span> <span className="text-muted">{s.text}</span>
                   </>
                 )}
               </span>
@@ -337,6 +373,7 @@ function Changes({ suggestions, onChange }: { suggestions: Suggestion[]; onChang
   );
 }
 
+/** What belongs in this column, and the one action that fills it. Steps hung from hairlines. */
 function EmptyState() {
   const steps = [
     ["1", "Paste a job description", "Any role, any field. Copy it straight from the job page."],
@@ -344,21 +381,20 @@ function EmptyState() {
     ["3", "Download PDF or Word", "The resume is fitted to 2 pages (3 at most) before it is exported."],
   ];
   return (
-    <Card>
-      <h2 className="mb-4 text-lg font-semibold">Tune your resume for each job in a minute</h2>
-      <ol className="flex flex-col gap-4">
+    <Card title="Tune your resume for each job in a minute">
+      <ol className="flex flex-col">
         {steps.map(([n, t, d]) => (
-          <li key={n} className="flex gap-3">
-            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-brand-600 text-sm font-semibold text-white">{n}</span>
-            <div>
+          <li key={n} className="border-rule flex gap-4 border-b py-4 first:pt-0 last:border-b-0">
+            <span className="font-display text-section text-muted leading-none font-bold">{n}</span>
+            <div className="min-w-0">
               <p className="font-medium">{t}</p>
-              <p className="muted text-sm">{d}</p>
+              <p className="text-muted text-sm">{d}</p>
             </div>
           </li>
         ))}
       </ol>
-      <p className="muted mt-5 text-xs">
-        Phase 1 runs fully in your browser with the rule engine — no AI key needed and nothing leaves your device except files you import.
+      <p className="text-muted border-rule mt-4 border-t pt-4 text-xs">
+        Phase 1 runs fully in your browser with the rule engine. No AI key needed, and nothing leaves your device except files you import.
       </p>
     </Card>
   );

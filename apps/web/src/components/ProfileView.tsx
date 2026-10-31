@@ -25,7 +25,7 @@ export function ProfileView({ profile, setProfile }: Props) {
       const data = (await res.json()) as { resume?: Resume; error?: string };
       if (!res.ok || !data.resume) throw new Error(data.error ?? "Import failed");
       setProfile(data.resume);
-      setStatus(`Imported ${file.name}. Check each section below — automatic parsing is not perfect.`);
+      setStatus(`Imported ${file.name}. Check each section below. Automatic parsing is not perfect.`);
     } catch (e) {
       setStatus((e as Error).message);
     }
@@ -39,7 +39,7 @@ export function ProfileView({ profile, setProfile }: Props) {
     });
 
   return (
-    <div className="mx-auto grid max-w-4xl gap-4">
+    <div className="mx-auto grid max-w-5xl gap-6">
       <Card
         title="Your base resume"
         actions={
@@ -47,7 +47,9 @@ export function ProfileView({ profile, setProfile }: Props) {
             <Button variant="primary" onClick={() => fileRef.current?.click()}>
               Upload PDF / Word
             </Button>
-            <Button onClick={() => setPasteOpen((v) => !v)}>Paste text</Button>
+            <Button onClick={() => setPasteOpen((v) => !v)} aria-expanded={pasteOpen}>
+              Paste text
+            </Button>
             <Button variant="ghost" onClick={() => setProfile(sampleResume())}>
               Load sample
             </Button>
@@ -65,16 +67,23 @@ export function ProfileView({ profile, setProfile }: Props) {
             e.target.value = "";
           }}
         />
-        <p className="muted text-sm">
-          This is the master copy. CVTuner never changes it when tuning — each job gets its own version.
+        <p className="text-muted max-w-[65ch] text-sm">
+          This is the master copy. CVTuner never changes it when tuning. Each job gets its own version.
         </p>
-        {status ? <p className="mt-2 text-sm" role="status">{status}</p> : null}
+        <p className="help mt-2" role="status">
+          {status}
+        </p>
         {pasteOpen ? (
           <div className="mt-3 flex flex-col gap-2">
-            <textarea className="field min-h-48 font-mono text-[13px]" placeholder="Paste your resume as plain text" value={pasted} onChange={(e) => setPasted(e.target.value)} />
-            <div className="flex justify-end gap-2">
+            <textarea
+              className="field min-h-48 text-sm"
+              placeholder="Paste your resume as plain text"
+              value={pasted}
+              onChange={(e) => setPasted(e.target.value)}
+              aria-label="Resume as plain text"
+            />
+            <div className="flex justify-end">
               <Button
-                variant="primary"
                 disabled={!pasted.trim()}
                 onClick={() => {
                   setProfile(parseResumeText(pasted));
@@ -88,36 +97,37 @@ export function ProfileView({ profile, setProfile }: Props) {
             </div>
           </div>
         ) : null}
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button variant="ghost" onClick={() => downloadBlob(new Blob([JSON.stringify(profile, null, 2)], { type: "application/json" }), "cvtuner-profile.json")}>
+        <div className="border-rule mt-4 flex flex-wrap justify-between gap-2 border-t pt-4">
+          <Button
+            variant="ghost"
+            onClick={() => downloadBlob(new Blob([JSON.stringify(profile, null, 2)], { type: "application/json" }), "cvtuner-profile.json")}
+          >
             Export JSON
           </Button>
           <Button variant="danger" onClick={() => confirm("Clear your whole profile?") && setProfile(emptyResume())}>
-            Clear
+            Clear profile
           </Button>
         </div>
       </Card>
 
       <Card title="Basics">
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Full name" value={profile.basics.name} onChange={(v) => set((r) => void (r.basics.name = v))} />
+          <Field label="Full name" value={profile.basics.name} onChange={(v) => set((r) => void (r.basics.name = v))} autoComplete="name" />
           <Field label="Headline" value={profile.basics.label} onChange={(v) => set((r) => void (r.basics.label = v))} placeholder="e.g. Staff Nurse, Data Analyst" />
-          <Field label="Email" value={profile.basics.email} onChange={(v) => set((r) => void (r.basics.email = v))} type="email" />
-          <Field label="Phone" value={profile.basics.phone} onChange={(v) => set((r) => void (r.basics.phone = v))} type="tel" />
-          <Field label="Location" value={profile.basics.location} onChange={(v) => set((r) => void (r.basics.location = v))} />
-          <Field label="Website / LinkedIn" value={profile.basics.url} onChange={(v) => set((r) => void (r.basics.url = v))} />
+          <Field label="Email" value={profile.basics.email} onChange={(v) => set((r) => void (r.basics.email = v))} type="email" autoComplete="email" />
+          <Field label="Phone" value={profile.basics.phone} onChange={(v) => set((r) => void (r.basics.phone = v))} type="tel" autoComplete="tel" />
+          <Field label="Location" value={profile.basics.location} onChange={(v) => set((r) => void (r.basics.location = v))} autoComplete="address-level2" />
+          <Field label="Website / LinkedIn" value={profile.basics.url} onChange={(v) => set((r) => void (r.basics.url = v))} type="url" autoComplete="url" />
         </div>
         <Area label="Summary" value={profile.basics.summary} onChange={(v) => set((r) => void (r.basics.summary = v))} className="mt-3" />
       </Card>
 
       <Card
         title="Experience"
-        actions={
-          <Button onClick={() => set((r) => void r.work.unshift({ id: newId("work"), name: "", position: "", highlights: [] }))}>+ Add role</Button>
-        }
+        actions={<Button onClick={() => set((r) => void r.work.unshift({ id: newId("work"), name: "", position: "", highlights: [] }))}>Add role</Button>}
       >
-        <div className="flex flex-col gap-4">
-          {profile.work.length === 0 ? <p className="muted text-sm">No roles yet.</p> : null}
+        <div className="flex flex-col">
+          {profile.work.length === 0 ? <p className="text-muted text-sm">No roles yet.</p> : null}
           {profile.work.map((w, i) => (
             <Entry
               key={w.id}
@@ -158,9 +168,10 @@ export function ProfileView({ profile, setProfile }: Props) {
 
       <Card
         title="Education"
-        actions={<Button onClick={() => set((r) => void r.education.push({ id: newId("edu"), institution: "" } as Education))}>+ Add</Button>}
+        actions={<Button onClick={() => set((r) => void r.education.push({ id: newId("edu"), institution: "" } as Education))}>Add</Button>}
       >
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col">
+          {profile.education.length === 0 ? <p className="text-muted text-sm">Nothing yet.</p> : null}
           {profile.education.map((e, i) => (
             <Entry key={e.id} onRemove={() => set((r) => void r.education.splice(i, 1))}>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -176,10 +187,10 @@ export function ProfileView({ profile, setProfile }: Props) {
 
       <Card
         title="Projects"
-        actions={<Button onClick={() => set((r) => void r.projects.push({ id: newId("proj"), name: "", highlights: [] } as Project))}>+ Add</Button>}
+        actions={<Button onClick={() => set((r) => void r.projects.push({ id: newId("proj"), name: "", highlights: [] } as Project))}>Add</Button>}
       >
-        <div className="flex flex-col gap-4">
-          {profile.projects.length === 0 ? <p className="muted text-sm">Optional.</p> : null}
+        <div className="flex flex-col">
+          {profile.projects.length === 0 ? <p className="text-muted text-sm">Optional.</p> : null}
           {profile.projects.map((p, i) => (
             <Entry key={p.id} onRemove={() => set((r) => void r.projects.splice(i, 1))}>
               <Field label="Name" value={p.name} onChange={(v) => set((r) => void (r.projects[i]!.name = v))} />
@@ -197,11 +208,12 @@ export function ProfileView({ profile, setProfile }: Props) {
   );
 }
 
+/** A record in the drawer: hung from a hairline, never a box inside a box. */
 function Entry({ children, onRemove, onUp }: { children: React.ReactNode; onRemove: () => void; onUp?: () => void }) {
   return (
-    <div className="rounded-xl border border-[var(--border)] p-3 sm:p-4">
+    <div className="border-rule border-b py-4 first:pt-0 last:border-b-0">
       <div className="flex flex-col gap-3">{children}</div>
-      <div className="mt-2 flex justify-end gap-1">
+      <div className="mt-3 flex justify-end gap-1">
         {onUp ? (
           <Button variant="ghost" onClick={onUp}>
             Move up
@@ -215,11 +227,25 @@ function Entry({ children, onRemove, onUp }: { children: React.ReactNode; onRemo
   );
 }
 
-function Field({ label, value, onChange, type = "text", placeholder }: { label: string; value?: string; onChange: (v: string) => void; type?: string; placeholder?: string }) {
+function Field({
+  label,
+  value,
+  onChange,
+  type = "text",
+  placeholder,
+  autoComplete,
+}: {
+  label: string;
+  value?: string;
+  onChange: (v: string) => void;
+  type?: string;
+  placeholder?: string;
+  autoComplete?: string;
+}) {
   return (
     <label className="flex flex-col gap-1 text-sm">
-      <span className="muted text-xs font-medium">{label}</span>
-      <input className="field" type={type} value={value ?? ""} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
+      <span className="field-label">{label}</span>
+      <input className="field" type={type} value={value ?? ""} placeholder={placeholder} autoComplete={autoComplete} onChange={(e) => onChange(e.target.value)} />
     </label>
   );
 }
@@ -229,7 +255,7 @@ function Area({ label, value, onChange, className = "", commitOnBlur }: { label:
   const [local, setLocal] = useState<string | null>(null);
   return (
     <label className={`flex flex-col gap-1 text-sm ${className}`}>
-      <span className="muted text-xs font-medium">{label}</span>
+      <span className="field-label">{label}</span>
       <textarea
         className="field min-h-20 resize-y"
         value={local ?? value ?? ""}
@@ -247,7 +273,7 @@ function Lines({ label, value, onChange }: { label: string; value: string[]; onC
   const [local, setLocal] = useState<string | null>(null);
   return (
     <label className="flex flex-col gap-1 text-sm">
-      <span className="muted text-xs font-medium">{label}</span>
+      <span className="field-label">{label}</span>
       <textarea
         className="field min-h-28 resize-y"
         value={local ?? value.join("\n")}
@@ -260,4 +286,3 @@ function Lines({ label, value, onChange }: { label: string; value: string[]; onC
     </label>
   );
 }
-

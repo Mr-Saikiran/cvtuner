@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { isProfileEmpty, useJobs, useProfile, useSettings, type SavedJob } from "@/lib/store";
+import { isProfileEmpty, useJobs, useMode, useProfile, useSettings, type Mode, type SavedJob } from "@/lib/store";
 import { HistoryView } from "./HistoryView";
 import { ProfileView } from "./ProfileView";
 import { SettingsView } from "./SettingsView";
@@ -16,47 +16,77 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "settings", label: "Settings" },
 ];
 
+const MODES: { id: Mode; label: string }[] = [
+  { id: "light", label: "Light" },
+  { id: "dark", label: "Dark" },
+  { id: "auto", label: "Auto" },
+];
+
 export function App() {
   const [profile, setProfile, profileReady] = useProfile();
   const [jobs, setJobs] = useJobs();
   const [settings, setSettings] = useSettings();
+  const [mode, setMode] = useMode();
   const [tab, setTab] = useState<Tab>("tune");
   const [openJob, setOpenJob] = useState<SavedJob | null>(null);
 
   const needsProfile = profileReady && isProfileEmpty(profile);
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-7xl flex-col px-4 pb-24 sm:px-6 sm:pb-10">
-      <header className="flex items-center justify-between gap-3 py-4">
-        <a href="/cvtuner" className="flex items-center gap-2" aria-label="CVTuner home">
-          <img src="/cvtuner/icon.svg" alt="" width={32} height={32} className="rounded-lg" />
-          <span className="text-lg font-bold tracking-tight">
-            CV<span className="text-brand-600">Tuner</span>
-          </span>
-          <span className="muted hidden text-xs sm:inline">by TechSwitch</span>
-        </a>
-        <nav className="hidden gap-1 sm:flex" aria-label="Main">
-          {TABS.map((t) => (
-            <TabButton key={t.id} active={tab === t.id} onClick={() => setTab(t.id)}>
-              {t.label}
-              {t.id === "saved" && jobs.length ? <span className="muted ml-1 text-xs">{jobs.length}</span> : null}
-            </TabButton>
-          ))}
-        </nav>
+    <div className="flex min-h-dvh flex-col pb-20 sm:pb-0">
+      <a className="skip" href="#main">
+        Skip to content
+      </a>
+
+      <header className="border-b-2 border-ink">
+        <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-6">
+          <a href="/cvtuner" className="flex min-w-0 items-center gap-2.5" aria-label="CVTuner home">
+            <img src="/cvtuner/icon.svg" alt="" width={28} height={28} />
+            <span className="font-display text-lg leading-none font-bold tracking-tight">CVTuner</span>
+            <span className="text-muted hidden text-xs sm:inline">by TechSwitch</span>
+          </a>
+
+          <nav className="hidden sm:block" aria-label="Main">
+            <div className="cells">
+              {TABS.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTab(t.id)}
+                  aria-current={tab === t.id ? "page" : undefined}
+                  className="cell"
+                >
+                  {t.label}
+                  {t.id === "saved" && jobs.length ? <span className="code ml-1.5 opacity-70">{jobs.length}</span> : null}
+                </button>
+              ))}
+            </div>
+          </nav>
+
+          <div role="radiogroup" aria-label="Colour mode" className="cells">
+            {MODES.map((m) => (
+              <button key={m.id} type="button" role="radio" aria-checked={mode === m.id} onClick={() => setMode(m.id)} className="cell">
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </header>
 
       {needsProfile && tab === "tune" ? (
-        <div className="surface mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border-brand-500/40 bg-brand-50/40 p-4 dark:bg-brand-500/10">
-          <p className="text-sm">
-            <strong>Start with your resume.</strong> Upload a PDF or Word file, or load the sample to try CVTuner.
-          </p>
-          <button type="button" className="rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-medium text-white" onClick={() => setTab("profile")}>
-            Add resume
-          </button>
+        <div className="bg-paper-2 border-b border-rule">
+          <div className="mx-auto flex w-full max-w-[1440px] flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
+            <p className="text-sm">
+              <strong className="font-medium">Start with your resume.</strong> Upload a PDF or Word file, or load the sample to try CVTuner.
+            </p>
+            <button type="button" className="btn" onClick={() => setTab("profile")}>
+              Add resume
+            </button>
+          </div>
         </div>
       ) : null}
 
-      <main className="flex-1">
+      <main id="main" className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-6 sm:px-6 sm:py-8">
         {tab === "tune" && (
           <TailorView
             profile={profile}
@@ -85,7 +115,7 @@ export function App() {
 
       {/* bottom tab bar on phones */}
       <nav
-        className="surface fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-x-0 border-b-0 pb-[env(safe-area-inset-bottom)] sm:hidden"
+        className="bg-plate fixed inset-x-0 bottom-0 z-[200] grid grid-cols-4 border-t-2 border-ink pb-[env(safe-area-inset-bottom)] sm:hidden"
         aria-label="Main"
       >
         {TABS.map((t) => (
@@ -93,26 +123,16 @@ export function App() {
             key={t.id}
             type="button"
             onClick={() => setTab(t.id)}
-            className={`py-3 text-sm font-medium ${tab === t.id ? "text-brand-600" : "muted"}`}
+            className={`min-h-11 border-l border-rule py-3 text-sm font-medium first:border-l-0 ${
+              tab === t.id ? "bg-ink text-paper" : "text-muted"
+            }`}
             aria-current={tab === t.id ? "page" : undefined}
           >
             {t.label}
+            {t.id === "saved" && jobs.length ? <span className="code ml-1.5 opacity-70">{jobs.length}</span> : null}
           </button>
         ))}
       </nav>
     </div>
-  );
-}
-
-function TabButton({ active, children, onClick }: { active: boolean; children: React.ReactNode; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-current={active ? "page" : undefined}
-      className={`rounded-lg px-3.5 py-2 text-sm font-medium transition-colors ${active ? "bg-brand-600 text-white" : "muted hover:bg-black/5 dark:hover:bg-white/10"}`}
-    >
-      {children}
-    </button>
   );
 }

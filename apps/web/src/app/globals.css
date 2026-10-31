@@ -1,78 +1,286 @@
+/* Hallmark · shape: app screen · genre: modern-minimal · theme: Terrazzo (deal 1/3, seed browser-tool-tailors-resume-55a1·02a656e2·2026-10-31·r0) · redesign: full
+ * nav: top bar, wordmark over square tab cells, mode cells at the far edge · signature: the resume on the plate, a white sheet in a 2px ink border over a hard offset, under a caption bar whose page count is mono · states: loading, empty, error, full · terrazzo: off-white + black, rust the signal in the chrome, brand blue reserved for state the user sets
+ * axes: light/geometric-sans/warm · posture: restrained · contrast: pass · modes: light+dark · v2.0.0 */
+/* Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V4 · weakest: R, two signal colours is one more than Terrazzo wants; earned by cutting the donut rings, the numbered circles and every rounded corner */
+/* Hallmark · answered F4 · Upload and Import text both show only while the paste panel is open; the rest of the app holds one ink fill, and it moves from Tune to Download as the task moves */
+/* Hallmark · dropped "Nothing pasted yet" for "nothing pasted yet" · sentence case, and the mono was 64 */
+/* Hallmark · finish-review: subagent · recapture then 8 findings · 6 resolved, 2 answered */
 @import "tailwindcss";
+@import "./tokens.css";
+@import "./base.css" layer(base);
 
-@theme {
-  --color-brand-50: #eef4ff;
-  --color-brand-100: #dbe7ff;
-  --color-brand-500: #3b6ef5;
-  --color-brand-600: #2a56d6;
-  --color-brand-700: #2143a8;
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+/* ---------- surfaces ---------- */
+
+.card {
+  background: var(--color-plate);
+  color: var(--color-ink);
+  border: var(--rule-bar) solid var(--color-ink);
+  box-shadow: var(--shadow-card);
 }
 
-:root {
-  --bg: #f6f7fb;
-  --surface: #ffffff;
-  --border: #e3e6ee;
-  --text: #161a23;
-  --muted: #5d6475;
-  color-scheme: light;
+.card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: var(--rule-hair) solid var(--color-rule);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0e1117;
-    --surface: #161b24;
-    --border: #2a3140;
-    --text: #e8ebf2;
-    --muted: #9aa3b5;
-    color-scheme: dark;
-  }
-}
+.card-body { padding: var(--space-md); }
 
-body {
-  background: var(--bg);
-  color: var(--text);
-}
+.rule-top { border-top: var(--rule-bar) solid var(--color-ink); }
 
-.surface {
-  background: var(--surface);
-  border: 1px solid var(--border);
-}
+/* ---------- controls ---------- */
 
-.muted {
-  color: var(--muted);
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  min-height: 36px;
+  padding: 0 var(--space-md);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  box-shadow: inset 0 0 0 var(--rule-bar) currentColor;
+  transition: background-color var(--dur-micro) var(--ease-out),
+              color var(--dur-micro) var(--ease-out);
 }
+.btn:hover { background: var(--color-paper-2); }
+.btn:active { background: var(--color-paper-3); }
+.btn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
+.btn[aria-busy="true"] { cursor: progress; }
+
+.btn--primary {
+  background: var(--color-ink);
+  color: var(--color-paper);
+  box-shadow: none;
+}
+.btn--primary:hover { background: var(--color-ink-2); }
+.btn--primary:active { background: var(--color-ink-2); }
+
+.btn--quiet { box-shadow: none; color: var(--color-muted); }
+.btn--quiet:hover { color: var(--color-ink); background: var(--color-paper-2); }
+
+.btn--danger { box-shadow: none; color: var(--color-warn); }
+.btn--danger:hover { background: var(--color-warn-soft); color: var(--color-warn); }
+
+@media (pointer: coarse) { .btn { min-height: 44px; } }
+
+/* ---------- square cells, joined edge to edge ---------- */
+
+.cells { display: inline-flex; box-shadow: inset 0 0 0 var(--rule-hair) var(--color-ink); }
+
+.cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 var(--space-sm);
+  border: 0;
+  border-left: var(--rule-hair) solid var(--color-ink);
+  background: transparent;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background-color var(--dur-micro) var(--ease-out),
+              color var(--dur-micro) var(--ease-out);
+}
+.cell:first-child { border-left: 0; }
+.cell:hover { color: var(--color-ink); background: var(--color-paper-2); }
+.cell:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
+.cell[aria-selected="true"], .cell[aria-checked="true"], .cell[aria-current="page"] {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+@media (pointer: coarse) { .cell { min-height: 44px; } }
+
+/* ---------- inputs ---------- */
 
 .field {
   width: 100%;
-  border-radius: 0.6rem;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  padding: 0.55rem 0.75rem;
-  font-size: 0.925rem;
-  outline: none;
+  padding: var(--space-xs) var(--space-sm);
+  border: var(--rule-hair) solid var(--color-ink);
+  border-radius: 0;
+  background: var(--color-plate);
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+  outline: 2px solid transparent;
+  outline-offset: -3px;
 }
-.field:focus {
-  border-color: var(--color-brand-500);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-brand-500) 20%, transparent);
+.field::placeholder { color: var(--color-muted); }
+.field:focus-visible { outline-color: var(--color-focus); }
+.field:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  border-style: dashed;
+  background: var(--color-paper-2);
+}
+.field[aria-invalid="true"] { border-color: var(--color-error); }
+
+.field-label {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--color-muted);
 }
 
-mark.kw-covered {
-  background: color-mix(in srgb, #16a34a 22%, transparent);
-  color: inherit;
-  border-radius: 3px;
-  padding: 0 2px;
+.help { min-height: 1lh; font-size: var(--text-xs); color: var(--color-muted); }
+
+input[type="checkbox"] {
+  appearance: none;
+  display: grid;
+  place-content: center;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border: var(--rule-hair) solid var(--color-ink);
+  background: var(--color-plate);
 }
-mark.kw-missing {
-  background: color-mix(in srgb, #dc2626 20%, transparent);
-  color: inherit;
-  border-radius: 3px;
-  padding: 0 2px;
+input[type="checkbox"]:checked { background: var(--color-accent); border-color: var(--color-accent); }
+input[type="checkbox"]:checked::after {
+  content: "";
+  width: 4px;
+  height: 8px;
+  border: solid var(--color-accent-ink);
+  border-width: 0 2px 2px 0;
+  transform: translateY(-1px) rotate(45deg);
 }
-mark.kw-confirmed {
-  background: color-mix(in srgb, #d97706 24%, transparent);
-  color: inherit;
-  border-radius: 3px;
-  padding: 0 2px;
+input[type="checkbox"]:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+
+/* ---------- the catalogue voice ---------- */
+
+.code {
+  font-family: var(--font-outlier);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.92em;
 }
+
+.spec { width: 100%; border-collapse: collapse; }
+.spec thead th {
+  padding: var(--space-xs) var(--space-sm);
+  border-bottom: var(--rule-bar) solid var(--color-ink);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--color-muted);
+  text-align: left;
+  white-space: nowrap;
+}
+.spec tbody td {
+  padding: var(--space-sm);
+  border-bottom: var(--rule-hair) solid var(--color-rule);
+  vertical-align: middle;
+}
+.spec tbody tr:hover { background: var(--color-accent-soft); }
+
+/* on a phone each row restacks as a labelled block, the name and the actions in view */
+@media (max-width: 48rem) {
+  .spec--stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .spec--stack tbody tr { display: block; border-bottom: var(--rule-bar) solid var(--color-ink); padding: var(--space-sm) 0; }
+  .spec--stack tbody tr:hover { background: transparent; }
+  .spec--stack tbody td { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-sm); border: 0; padding: var(--space-3xs) 0; }
+  .spec--stack tbody td::before { content: attr(data-label); flex: none; color: var(--color-muted); font-size: var(--text-xs); }
+  .spec--stack tbody td[data-label=""]::before { content: none; }
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  min-height: 28px;
+  padding: 0 var(--space-xs);
+  border: var(--rule-hair) solid var(--color-rule);
+  background: transparent;
+  color: var(--color-ink-2);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  line-height: 1;
+  transition: background-color var(--dur-micro) var(--ease-out),
+              border-color var(--dur-micro) var(--ease-out);
+}
+.chip--missing { border-color: var(--color-warn); color: var(--color-warn); }
+.chip--missing:hover { background: var(--color-warn-soft); }
+.chip--confirmed { border-color: var(--color-accent); background: var(--color-accent-soft); color: var(--color-ink); }
+.chip:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+@media (pointer: coarse) { .chip { min-height: 32px; } }
+
+/* the figure the catalogue is read for */
+.figure-xl {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--text-4xl);
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- the resume on the plate ---------- */
+
+.plate {
+  background: var(--color-plate);
+  color: var(--color-ink);
+  border: var(--rule-bar) solid var(--color-ink);
+  box-shadow: var(--shadow-card);
+}
+/* the rendered resume: always paper, so the PDF viewer never follows the page into dark */
+.sheet {
+  color-scheme: light;
+  background: var(--color-sheet);
+  color: var(--color-sheet-ink);
+}
+
+.plate-caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  border-top: var(--rule-bar) solid var(--color-ink);
+  font-size: var(--text-xs);
+}
+
+/* ---------- the job description, marked ---------- */
+
+mark.kw-covered, mark.kw-missing, mark.kw-confirmed {
+  color: inherit;
+  border-radius: 0;
+  padding: 0 var(--space-3xs);
+}
+mark.kw-covered { background: var(--mark-covered); }
+mark.kw-missing { background: var(--mark-missing); box-shadow: inset 0 -2px 0 var(--color-warn); }
+mark.kw-confirmed { background: var(--mark-confirmed); box-shadow: inset 0 -2px 0 var(--color-accent); }
+
+/* ---------- a way past the bar ---------- */
+
+.skip {
+  position: absolute;
+  left: var(--space-md);
+  top: calc(-1 * var(--space-3xl));
+  z-index: var(--z-toast);
+  padding: var(--space-xs) var(--space-md);
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+.skip:focus-visible { top: var(--space-xs); }
+
+/* ---------- loading ---------- */
+
+.skeleton {
+  background: linear-gradient(90deg, var(--color-paper-2), var(--color-paper-3), var(--color-paper-2));
+  background-size: 200% 100%;
+  animation: sheen 1.4s var(--ease-in-out) infinite;
+}
+@keyframes sheen { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
