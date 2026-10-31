@@ -21,7 +21,11 @@ export function JdHighlight({ text, keywords }: { text: string; keywords: Keywor
   }, [text, keywords]);
 
   return (
-    <div className="field max-h-[440px] min-h-[260px] overflow-auto whitespace-pre-wrap text-[13px] leading-relaxed" tabIndex={0} aria-label="Job description with highlighted keywords">
+    <div
+      className="field max-h-[460px] min-h-[280px] overflow-auto text-sm leading-relaxed whitespace-pre-wrap lg:min-h-[360px]"
+      tabIndex={0}
+      aria-label="Job description with highlighted keywords"
+    >
       {parts.map((p, i) =>
         p.kw ? (
           <mark key={i} className={p.kw.coverage === "covered" ? "kw-covered" : p.kw.confirmed ? "kw-confirmed" : "kw-missing"} title={p.kw.coverage === "covered" ? "In your resume" : p.kw.confirmed ? "Confirmed by you" : "Missing"}>

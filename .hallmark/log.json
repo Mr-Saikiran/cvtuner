@@ -1,0 +1,22 @@
+[
+ {
+  "mode": "redesign",
+  "depth": "full",
+  "scope": "app",
+  "shape": "app screen",
+  "theme": "terrazzo",
+  "axes": "light/geometric-sans/warm",
+  "nav": "top bar, wordmark over square tab cells, mode cells at the far edge",
+  "footer": "none (app screen)",
+  "imagery": "the product itself: the real rendered PDF on the plate",
+  "photos": [],
+  "entry": "the resume on the plate",
+  "fingerprint": "terrazzo-app-cvtuner-resume-plate",
+  "sections": "Tune (JD marked + match + plate + changes), Profile, Saved (spec table), Settings",
+  "signature": "the resume on the plate, a white sheet in a 2px ink border over a hard offset under a mono-counted caption bar",
+  "hero": "none (app screen)",
+  "waived": [],
+  "prompt": "a browser tool that tailors a resume to a job description and exports a two-page PDF",
+  "date": "2026-10-31"
+ }
+]

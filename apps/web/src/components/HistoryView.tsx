@@ -1,38 +1,66 @@
 import type { SavedJob } from "@/lib/store";
-import { Badge, Button, Card } from "./ui";
+import { Button, Card } from "./ui";
 
 export function HistoryView({ jobs, onOpen, onDelete }: { jobs: SavedJob[]; onOpen: (j: SavedJob) => void; onDelete: (id: string) => void }) {
   if (!jobs.length) {
     return (
       <Card title="Saved versions">
-        <p className="muted text-sm">Nothing saved yet. Tune your resume for a job and press “Save version”.</p>
+        <p className="text-muted text-sm">Nothing saved yet. Tune your resume for a job and press “Save version”.</p>
       </Card>
     );
   }
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {jobs.map((j) => (
-        <article key={j.id} className="surface flex flex-col gap-3 rounded-2xl p-4">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <h3 className="truncate font-semibold">{j.title}</h3>
-              <p className="muted truncate text-sm">{j.company ?? "—"}</p>
-            </div>
-            <Badge tone={j.score >= 75 ? "good" : j.score >= 50 ? "warn" : "bad"}>{j.score}% match</Badge>
-          </div>
-          <p className="muted text-xs">
-            {j.suggestions.filter((s) => s.accepted).length} changes · updated {new Date(j.updatedAt).toLocaleDateString()}
-          </p>
-          <div className="mt-auto flex gap-2">
-            <Button variant="primary" onClick={() => onOpen(j)}>
-              Open
-            </Button>
-            <Button variant="danger" onClick={() => confirm(`Delete “${j.title}”?`) && onDelete(j.id)}>
-              Delete
-            </Button>
-          </div>
-        </article>
-      ))}
-    </div>
+    <section className="card">
+      <div className="card-head">
+        <h2>
+          Saved versions <span className="code text-muted">{jobs.length}</span>
+        </h2>
+      </div>
+      <div className="card-body">
+        <table className="spec spec--stack">
+          <thead>
+            <tr>
+              <th scope="col">Role</th>
+              <th scope="col">Company</th>
+              <th scope="col">Match</th>
+              <th scope="col">Changes</th>
+              <th scope="col">Updated</th>
+              <th scope="col">
+                <span className="visually-hidden">Actions</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {jobs.map((j) => (
+              <tr key={j.id}>
+                <td data-label="">
+                  <span className="font-medium">{j.title}</span>
+                </td>
+                <td data-label="Company" className="text-muted">
+                  {j.company ?? "not named"}
+                </td>
+                <td data-label="Match">
+                  <span className={`code ${j.score >= 75 ? "" : j.score >= 50 ? "text-ink-2" : "text-warn"}`}>{j.score}%</span>
+                </td>
+                <td data-label="Changes" className="code text-muted">
+                  {j.suggestions.filter((s) => s.accepted).length}
+                </td>
+                <td data-label="Updated" className="code text-muted">
+                  {new Date(j.updatedAt).toLocaleDateString()}
+                </td>
+                <td data-label="">
+                  <span className="flex justify-end gap-1">
+                    <Button onClick={() => onOpen(j)}>Open</Button>
+                    <Button variant="danger" onClick={() => confirm(`Delete “${j.title}”?`) && onDelete(j.id)}>
+                      Delete
+                    </Button>
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }

@@ -1,0 +1,120 @@
+/* Terrazzo, off-white + black colourway. Brand blue #2a56d6 takes rust's accent slot;
+   rust stays on as --color-warn, the one "missing" state. Hue never moves between modes. */
+@theme static {
+  --color-paper: oklch(96% 0.009 82);
+  --color-paper-2: oklch(92% 0.012 82);
+  --color-paper-3: oklch(87.5% 0.014 80);
+  --color-plate: oklch(99.5% 0.003 82);
+  --color-ink: oklch(16% 0.006 60);
+  --color-ink-2: oklch(27% 0.006 60);
+  --color-muted: oklch(46% 0.01 60);
+  --color-rule: oklch(81% 0.012 80);
+
+  --color-accent: oklch(50% 0.19 266);
+  --color-accent-soft: oklch(93% 0.035 266);
+  --color-accent-ink: oklch(99.5% 0.003 82);
+  --color-focus: oklch(50% 0.19 266);
+
+  --color-warn: oklch(53% 0.15 38);
+  --color-warn-soft: oklch(91% 0.035 45);
+  --color-error: oklch(52% 0.19 27);
+
+  /* the document's own paper and ink: a resume is printed on white in either mode,
+     so this pair is deliberately never re-derived for dark */
+  --color-sheet: oklch(99.5% 0.003 82);
+  --color-sheet-ink: oklch(16% 0.006 60);
+
+  --mark-covered: oklch(16% 0.006 60 / 0.1);
+  --mark-missing: oklch(53% 0.15 38 / 0.18);
+  --mark-confirmed: oklch(50% 0.19 266 / 0.16);
+
+  --font-display: var(--font-syne), ui-sans-serif, sans-serif;
+  --font-body: var(--font-onest), ui-sans-serif, sans-serif;
+  --font-outlier: var(--font-jetbrains), ui-monospace, monospace;
+
+  --text-xs: 0.75rem; --text-sm: 0.875rem; --text-md: 1rem; --text-lg: 1.125rem;
+  --text-xl: 1.266rem; --text-2xl: 1.424rem; --text-3xl: 1.602rem; --text-4xl: 2.281rem;
+  --text-section: 1.266rem; --text-title: 1rem;
+
+  --radius-card: 0; --radius-pill: 0;
+  --shadow-card: 14px 14px 0 var(--color-paper-3);
+  --shadow-card-hover: 14px 14px 0 var(--color-ink);
+  --tracking-display: -0.025em;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+:root {
+  color-scheme: light dark;
+  --space-3xs: 2px; --space-2xs: 4px; --space-xs: 8px; --space-sm: 12px; --space-md: 16px;
+  --space-lg: 24px; --space-xl: 40px; --space-2xl: 64px; --space-3xl: 96px; --space-4xl: 144px;
+  --dur-micro: 120ms; --dur-short: 220ms; --dur-long: 420ms;
+  --rule-hair: 1px; --rule-bar: 2px;
+  --display-weight: 700;
+  --container: 1440px; --gutter: 40px; --gap-columns: 24px;
+  --bar-height: 64px;
+  --z-base: 1; --z-raised: 10; --z-dropdown: 100; --z-sticky: 200; --z-sticky-nav: 300;
+  --z-modal: 400; --z-toast: 500; --z-tooltip: 600;
+}
+
+/* Dark: every token re-derived, never inverted. Paper L15, ink L94, accent chroma down and
+   L up so the blue does not glare, rule lifted so hairlines survive on the dark ground. */
+:root[data-mode="dark"] {
+  color-scheme: dark;
+  --color-paper: oklch(15% 0.008 82);
+  --color-paper-2: oklch(18% 0.009 82);
+  --color-paper-3: oklch(21% 0.01 82);
+  --color-plate: oklch(19.5% 0.009 82);
+  --color-ink: oklch(94% 0.01 82);
+  --color-ink-2: oklch(82% 0.01 72);
+  --color-muted: oklch(68% 0.012 72);
+  --color-rule: oklch(32% 0.012 80);
+
+  --color-accent: oklch(62% 0.16 266);
+  --color-accent-soft: oklch(28% 0.055 266);
+  --color-accent-ink: oklch(15% 0.008 82);
+  --color-focus: oklch(68% 0.15 266);
+
+  --color-warn: oklch(68% 0.14 40);
+  --color-warn-soft: oklch(29% 0.05 40);
+  --color-error: oklch(66% 0.17 27);
+
+  --mark-covered: oklch(94% 0.01 82 / 0.14);
+  --mark-missing: oklch(68% 0.14 40 / 0.26);
+  --mark-confirmed: oklch(62% 0.16 266 / 0.3);
+
+  --shadow-card: 14px 14px 0 var(--color-paper-3);
+  --shadow-card-hover: 14px 14px 0 var(--color-ink-2);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-mode]) {
+    color-scheme: dark;
+    --color-paper: oklch(15% 0.008 82);
+    --color-paper-2: oklch(18% 0.009 82);
+    --color-paper-3: oklch(21% 0.01 82);
+    --color-plate: oklch(19.5% 0.009 82);
+    --color-ink: oklch(94% 0.01 82);
+    --color-ink-2: oklch(82% 0.01 72);
+    --color-muted: oklch(68% 0.012 72);
+    --color-rule: oklch(32% 0.012 80);
+
+    --color-accent: oklch(62% 0.16 266);
+    --color-accent-soft: oklch(28% 0.055 266);
+    --color-accent-ink: oklch(15% 0.008 82);
+    --color-focus: oklch(68% 0.15 266);
+
+    --color-warn: oklch(68% 0.14 40);
+    --color-warn-soft: oklch(29% 0.05 40);
+    --color-error: oklch(66% 0.17 27);
+
+    --mark-covered: oklch(94% 0.01 82 / 0.14);
+    --mark-missing: oklch(68% 0.14 40 / 0.26);
+    --mark-confirmed: oklch(62% 0.16 266 / 0.3);
+
+    --shadow-card: 14px 14px 0 var(--color-paper-3);
+    --shadow-card-hover: 14px 14px 0 var(--color-ink-2);
+  }
+}

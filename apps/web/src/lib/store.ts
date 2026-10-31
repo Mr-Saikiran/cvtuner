@@ -21,7 +21,39 @@ export interface SavedJob {
   score: number;
 }
 
-const KEYS = { profile: "cvtuner.profile.v1", jobs: "cvtuner.jobs.v1", settings: "cvtuner.settings.v1", draft: "cvtuner.draft.v1" };
+const KEYS = { profile: "cvtuner.profile.v1", jobs: "cvtuner.jobs.v1", settings: "cvtuner.settings.v1", draft: "cvtuner.draft.v1", mode: "cvtuner.mode.v1" };
+
+export type Mode = "light" | "dark" | "auto";
+
+/**
+ * Colour mode. "auto" follows the OS by removing the attribute, so the
+ * prefers-color-scheme block in tokens.css takes over. Stored as a raw string,
+ * not JSON, because the inline script in layout.tsx reads it before first paint.
+ */
+export function useMode() {
+  const [mode, setMode] = useState<Mode>("auto");
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(KEYS.mode);
+      if (saved === "light" || saved === "dark") setMode(saved);
+    } catch {
+      // blocked storage: stay on auto
+    }
+  }, []);
+  const update = useCallback((next: Mode) => {
+    setMode(next);
+    const root = document.documentElement;
+    if (next === "auto") delete root.dataset.mode;
+    else root.dataset.mode = next;
+    try {
+      if (next === "auto") localStorage.removeItem(KEYS.mode);
+      else localStorage.setItem(KEYS.mode, next);
+    } catch {
+      // the choice still holds for this session
+    }
+  }, []);
+  return [mode, update] as const;
+}
 
 function read<T>(key: string, fallback: T): T {
   try {
