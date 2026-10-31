@@ -4,7 +4,9 @@ import {
   applySuggestions,
   atsReport,
   buildTailorPrompt,
+  cleanCopiedJob,
   inferSkillsFromResume,
+  slugHints,
   DOC_LANGUAGES,
   extractJson,
   newId,
@@ -23,6 +25,7 @@ import { INCOMING_KEY, useDraftJd, type SavedJob, type Settings } from "@/lib/st
 import { TEMPLATES } from "@cvtuner/render";
 import { AtsCard } from "./AtsCard";
 import { CoverLetterCard } from "./CoverLetterCard";
+import { PortalHelp } from "./PortalHelp";
 import { JdHighlight } from "./JdHighlight";
 import { Preview } from "./Preview";
 import { Badge, Button, Card, Score, Segmented } from "./ui";
@@ -57,7 +60,7 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave, on
   const [mobilePane, setMobilePane] = useState<"changes" | "preview" | "letter">("preview");
   const [link, setLink] = useState("");
   const [linkMeta, setLinkMeta] = useState<{ url?: string; title?: string; company?: string }>({});
-  const [linkState, setLinkState] = useState<{ busy: boolean; error?: string }>({ busy: false });
+  const [linkState, setLinkState] = useState<{ busy: boolean; error?: string; blocked?: string; note?: string }>({ busy: false });
   const [aiRun, setAiRun] = useState<AiRun | null>(null);
   const [aiState, setAiState] = useState<{ busy: boolean; error?: string }>({ busy: false });
   const [letter, setLetter] = useState<string[] | undefined>(undefined);
@@ -147,9 +150,48 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave, on
       setMode("edit");
       setLinkState({ busy: false });
     } catch (e) {
-      setLinkState({ busy: false, error: (e as Error).message });
+      const err = e as Error & { blocked?: boolean };
+      if (!err.blocked) {
+        setLinkState({ busy: false, error: err.message });
+        return;
+      }
+      // LinkedIn, Naukri, Indeed: try the same job through JSearch when the link names it, else guide the user
+      const blocked = url.trim();
+      const hint = slugHints(blocked);
+      const k = settings.search;
+      if (hint.title && k.rapidApiKey) {
+        try {
+          const res = await fetch("/cvtuner/api/search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: { title: `${hint.title}${hint.company ? ` ${hint.company}` : ""}`, location: "", country: "in" }, keys: { rapidApiKey: k.rapidApiKey } }),
+          });
+          const data = (await res.json()) as { jobs?: { title?: string; company?: string; text: string; url: string }[] };
+          const same = data.jobs?.find((j) => (j.title ?? "").toLowerCase().includes(hint.title!.split(" ")[0]!) && (!hint.company || (j.company ?? "").toLowerCase().includes(hint.company.split(" ")[0]!)));
+          if (same) {
+            setDraft(same.text);
+            setLinkMeta({ url: blocked, title: same.title, company: same.company });
+            setMode("edit");
+            setLinkState({ busy: false, note: "Found this job through JSearch. Check it matches the posting." });
+            return;
+          }
+        } catch {
+          // fall through to the guided paste
+        }
+      }
+      setLinkMeta({ url: blocked });
+      setLinkState({ busy: false, blocked });
     }
   }
+
+  /** Text copied from a whole job page is cleaned down to the description. */
+  const takeCopied = (raw: string) => {
+    const c = cleanCopiedJob(raw);
+    setDraft(c.text);
+    if (c.title || c.company) setLinkMeta((m) => ({ ...m, title: c.title ?? m.title, company: c.company ?? m.company }));
+    setMode("edit");
+    setLinkState({ busy: false, note: c.cleaned ? `Description extracted from the copied page (${c.text.split(/\s+/).length} words). Check it, then tune.` : undefined });
+  };
 
   const runAi = async (jd: string, confirmedNow = confirmed) => {
     const rule = tailor(profile, jd, { voice: settings.voice, confirmedSkills: confirmedNow });
@@ -275,7 +317,7 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave, on
               className="field"
               type="url"
               inputMode="url"
-              placeholder="Job link: Greenhouse, Lever, Ashby, Workable or a company career page"
+              placeholder="Job link: LinkedIn, Naukri, Indeed, Greenhouse, Lever, Ashby or a career page"
               value={link}
               onChange={(e) => setLink(e.target.value)}
               aria-label="Job link"
@@ -289,12 +331,26 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave, on
               {linkState.error}
             </p>
           ) : null}
+          {linkState.blocked ? <PortalHelp url={linkState.blocked} onText={takeCopied} hasJsearch={!!settings.search.rapidApiKey} onOpenSettings={onOpenSettings} /> : null}
+          {linkState.note ? (
+            <p className="text-muted border-accent mb-3 border-l-2 px-3 py-2 text-sm" role="status">
+              {linkState.note}
+            </p>
+          ) : null}
           {mode === "edit" || !result ? (
             <textarea
               className="field min-h-[280px] resize-y text-sm leading-relaxed lg:min-h-[360px]"
               placeholder="Or paste the full job description here: responsibilities, requirements, nice-to-haves. Any field works: nursing, finance, sales, software."
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
+              onPaste={(e) => {
+                // a whole copied LinkedIn / Naukri / Indeed page is trimmed to the description
+                const pasted = e.clipboardData.getData("text");
+                if (!draft.trim() && cleanCopiedJob(pasted).cleaned) {
+                  e.preventDefault();
+                  takeCopied(pasted);
+                }
+              }}
               aria-label="Job description"
             />
           ) : (

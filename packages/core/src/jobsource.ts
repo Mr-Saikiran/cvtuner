@@ -231,3 +231,62 @@ export function parseAts(ref: AtsRef, json: unknown, url: string): JobPosting[] 
     }
   }
 }
+
+/** Lines that are portal chrome, not part of a job description. */
+const CHROME_LINE = /^(apply|easy apply|save|saved|share|show more|show less|see more|see less|report this job|report job|promoted|actively recruiting|reposted.*|\d+ (applicants?|clicks?).*|over \d+ applicants|be an early applicant|.*ago$|·.*|message|follow|following|premium|try premium.*|retry premium.*|get the app|sign in|join now|skip to main content|jobs|home|my network|messaging|notifications|me|for business|set alert.*|job alert.*|how you match.*|people you can reach out to|meet the hiring team|see how you compare.*|exclusive job seeker insights|top job picks.*|\d+ of \d+ skills match.*|show match details|tailor my resume|create cover letter|help me stand out|am i a good fit.*|beta|is this information helpful\?|yes|no)$/i;
+
+/**
+ * Cleans text copied from a whole job page (Ctrl+A, Ctrl+C) on LinkedIn, Naukri or Indeed:
+ * keeps the description, drops navigation, buttons and recommendation panels.
+ */
+export function cleanCopiedJob(raw: string): { text: string; title?: string; company?: string; cleaned: boolean } {
+  const text = raw.replace(/\r/g, "");
+  const markers: [RegExp, RegExp][] = [
+    // LinkedIn
+    [/^\s*about the job\s*$/im, /^\s*(set alert for similar jobs|about the company|see how you compare|meet the hiring team|more jobs|people also viewed|show less|looking for talent\?)\s*$/im],
+    // Indeed
+    [/^\s*full job description\s*$/im, /^\s*(report job|hiring insights|job activity|if you require alternative methods)\b.*$/im],
+    // Naukri
+    [/^\s*job description\s*$/im, /^\s*(about company|beware of imposters|similar jobs|reviews|benefits & perks)\s*$/im],
+  ];
+  for (const [start, end] of markers) {
+    const s = text.search(start);
+    if (s === -1) continue;
+    const head = text.slice(0, s);
+    let body = text.slice(s).replace(start, "");
+    const e = body.search(end);
+    if (e > 40) body = body.slice(0, e);
+    const lines = body.split("\n").map((l) => l.trim()).filter((l) => l && !CHROME_LINE.test(l));
+    // on the page the company and title sit just above the "City · 3 weeks ago · 100 applicants" line
+    const headLines = head.split("\n").map((l) => l.trim()).filter(Boolean);
+    const meta = headLines.findIndex((l) => /\s·\s|\bago\b|applicants|posted/i.test(l));
+    const above = (meta >= 0 ? headLines.slice(0, meta) : headLines).filter((l) => !CHROME_LINE.test(l) && l.length < 90);
+    const title = above[above.length - 1];
+    const company = above[above.length - 2];
+    return {
+      text: lines.join("\n").replace(/\n{3,}/g, "\n\n").trim(),
+      title,
+      company,
+      cleaned: true,
+    };
+  }
+  const lines = text.split("\n").map((l) => l.trim());
+  return { text: lines.filter((l) => !CHROME_LINE.test(l)).join("\n").replace(/\n{3,}/g, "\n\n").trim(), cleaned: false };
+}
+
+/** Title and company from a portal URL slug, e.g. /jobs/view/senior-buyer-at-acme-4470449960 → "senior buyer", "acme". */
+export function slugHints(url: string): { title?: string; company?: string } {
+  try {
+    const u = new URL(url);
+    const seg = u.pathname.split("/").filter(Boolean);
+    const last = seg[seg.length - 1] ?? "";
+    // LinkedIn: <title>-at-<company>-<id>; Naukri: job-listings-<title>-<company>-<city>-<years>-<id>; Indeed uses ?jk= only
+    const m = last.match(/^(.+?)-at-(.+?)-\d{6,}$/);
+    if (m) return { title: m[1]!.replace(/-/g, " "), company: m[2]!.replace(/-/g, " ") };
+    const n = last.match(/^job-listings-(.+?)-\d{6,}$/);
+    if (n) return { title: n[1]!.replace(/-\d+-to-\d+-years?$/, "").replace(/-/g, " ") };
+    return {};
+  } catch {
+    return {};
+  }
+}

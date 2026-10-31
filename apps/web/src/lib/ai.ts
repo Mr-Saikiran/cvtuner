@@ -60,6 +60,9 @@ export async function aiModels(ai: AiSettings, provider: ProviderId = ai.provide
 export async function fetchJob(url: string, mode: "job" | "board" = "job") {
   const res = await fetch("/cvtuner/api/job", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url, mode }) });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error((data as { error?: string }).error ?? `Could not fetch the link (${res.status})`);
+  if (!res.ok) {
+    const d = data as { error?: string; blocked?: boolean };
+    throw Object.assign(new Error(d.error ?? `Could not fetch the link (${res.status})`), { blocked: !!d.blocked });
+  }
   return data as { job?: import("@cvtuner/core").JobPosting; jobs?: import("@cvtuner/core").JobPosting[] };
 }
