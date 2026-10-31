@@ -1,0 +1,10 @@
+{
+  "name": "CVTuner by TechSwitch",
+  "short_name": "CVTuner",
+  "start_url": "/cvtuner",
+  "scope": "/cvtuner/",
+  "display": "standalone",
+  "background_color": "#f6f7fb",
+  "theme_color": "#2a56d6",
+  "icons": [{ "src": "/cvtuner/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
