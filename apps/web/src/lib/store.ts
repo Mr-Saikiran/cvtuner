@@ -1,6 +1,6 @@
 "use client";
 
-import { emptyResume, parseResume, type JobPosting, type ProviderId, type Resume, type Suggestion, type Voice } from "@cvtuner/core";
+import { emptyResume, parseResume, type FoundJob, type JobPosting, type ProviderId, type Resume, type SearchQuery, type Suggestion, type Voice } from "@cvtuner/core";
 import { useCallback, useEffect, useState } from "react";
 
 export type { TemplateId } from "@cvtuner/render";
@@ -32,6 +32,23 @@ export interface Settings {
   suggestMetrics: boolean;
   /** bold numbers and percentages in experience bullets */
   boldMetrics: boolean;
+  search: SearchSettings;
+}
+
+export interface SearchSettings {
+  /** search automatically when the Jobs tab opens and you are online */
+  auto: boolean;
+  adzunaId: string;
+  adzunaKey: string;
+  /** RapidAPI key for JSearch (LinkedIn, Indeed, Naukri and more via Google for Jobs) */
+  rapidApiKey: string;
+}
+
+export interface SearchRun {
+  query: SearchQuery;
+  ranAt: number;
+  jobs: (FoundJob & { score: number; missing: string[] })[];
+  sources: { source: string; count: number; error?: string }[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -44,6 +61,7 @@ export const DEFAULT_SETTINGS: Settings = {
   skillConfirm: "manual",
   suggestMetrics: true,
   boldMetrics: true,
+  search: { auto: true, adzunaId: "", adzunaKey: "", rapidApiKey: "" },
   ai: { provider: "gemini", models: {}, keys: {}, customBaseUrl: "http://localhost:11434/v1" },
 };
 
@@ -85,6 +103,7 @@ const KEYS = {
   settings: "cvtuner.settings.v1",
   draft: "cvtuner.draft.v1",
   boards: "cvtuner.boards.v1",
+  search: "cvtuner.search.v1",
   mode: "cvtuner.mode.v1",
 };
 
@@ -173,8 +192,9 @@ export const useProfile = () =>
   });
 export const useJobs = () => usePersisted<SavedJob[]>(KEYS.jobs, []);
 export const useSettings = () =>
-  usePersisted<Settings>(KEYS.settings, DEFAULT_SETTINGS, (v) => ({ ...DEFAULT_SETTINGS, ...v, ai: { ...DEFAULT_SETTINGS.ai, ...v?.ai } }));
+  usePersisted<Settings>(KEYS.settings, DEFAULT_SETTINGS, (v) => ({ ...DEFAULT_SETTINGS, ...v, ai: { ...DEFAULT_SETTINGS.ai, ...v?.ai }, search: { ...DEFAULT_SETTINGS.search, ...v?.search } }));
 export const useBoards = () => usePersisted<WatchedBoard[]>(KEYS.boards, []);
+export const useSearchRun = () => usePersisted<SearchRun | null>(KEYS.search, null);
 export const useDraftJd = () => usePersisted<string>(KEYS.draft, "");
 
 export function isProfileEmpty(r: Resume): boolean {

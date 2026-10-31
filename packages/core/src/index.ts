@@ -12,3 +12,4 @@ export * from "./i18n";
 export * from "./jobsource";
 export * from "./metrics";
 export * from "./ats";
+export * from "./jobsearch";

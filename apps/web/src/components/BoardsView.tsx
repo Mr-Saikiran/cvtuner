@@ -1,6 +1,6 @@
 "use client";
 
-import { detectAts, matchScore, newId, type Resume } from "@cvtuner/core";
+import { detectAts, isBlockedHost, matchScore, newId, type Resume } from "@cvtuner/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchJob } from "@/lib/ai";
 import { INCOMING_KEY, useBoards, type WatchedBoard } from "@/lib/store";
@@ -64,6 +64,16 @@ export function BoardsView({ profile, onTune }: { profile: Resume; onTune: () =>
   const add = async () => {
     setError(null);
     const ats = detectAts(url.trim());
+    let host = "";
+    try {
+      host = new URL(url.trim()).hostname;
+    } catch {
+      // not a URL; handled below
+    }
+    if (isBlockedHost(host)) {
+      setError(`${host.replace(/^www\./, "")} doesn't let apps read its listings, so it can't be watched. Use the LinkedIn, Naukri and Indeed buttons under “Find jobs” above, or add a free JSearch key in Settings to see their listings here.`);
+      return;
+    }
     if (!ats) {
       setError("Paste a careers page link from Greenhouse, Lever, Ashby, SmartRecruiters or Workable, e.g. https://boards.greenhouse.io/acme or https://jobs.lever.co/acme");
       return;
@@ -105,8 +115,8 @@ export function BoardsView({ profile, onTune }: { profile: Resume; onTune: () =>
   };
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-      <div className="flex flex-col gap-4">
+    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+      <div className="flex flex-col gap-6">
         <Card title="Watch company job boards">
           <form
             className="flex flex-col gap-2"
@@ -154,11 +164,11 @@ export function BoardsView({ profile, onTune }: { profile: Resume; onTune: () =>
       </div>
 
       <Card
-        title={`Open roles${all.length ? ` (${all.length})` : ""}`}
+        title={`Roles on watched boards${all.length ? ` (${all.length})` : ""}`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <input className="field w-40 py-1.5 text-sm" placeholder="Filter title, city" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Filter roles" />
-            <label className="text-muted flex items-center gap-1 text-xs">
+            <label className="text-muted flex items-center gap-1 text-xs whitespace-nowrap">
               Min match
               <select className="field w-auto py-1 text-xs" value={minScore} onChange={(e) => setMinScore(Number(e.target.value))}>
                 {[0, 30, 50, 70].map((n) => (
@@ -172,7 +182,7 @@ export function BoardsView({ profile, onTune }: { profile: Resume; onTune: () =>
         }
       >
         {!all.length ? (
-          <p className="text-muted text-sm">{boards.length ? "No roles match the filters." : "Add a company board to see its open roles ranked by how well they match your profile."}</p>
+          <p className="text-muted text-sm">{boards.length ? "No roles match the filters." : "Add a company's Greenhouse, Lever or Ashby careers page to see its open roles ranked by how well they match your profile."}</p>
         ) : (
           <ul className="flex flex-col divide-y divide-rule">
             {all.slice(0, 150).map((j) => (

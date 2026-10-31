@@ -1,17 +1,44 @@
 "use client";
 
 import { emptyResume, newId, parseResumeText, sampleResume, type Education, type Project, type Resume } from "@cvtuner/core";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { downloadBlob } from "@/lib/files";
 import { Button, Card } from "./ui";
 
 interface Props {
   profile: Resume;
   setProfile: (r: Resume | ((p: Resume) => Resume)) => void;
+  onNext: (tab: "tune" | "jobs") => void;
 }
 
-export function ProfileView({ profile, setProfile }: Props) {
+export function ProfileView({ profile, setProfile, onNext }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
+  // edits go to a draft; "Save profile" commits it to this browser's storage
+  const [draft, setDraft] = useState<Resume>(profile);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const dirty = JSON.stringify(draft) !== JSON.stringify(profile);
+  const last = useRef(profile);
+  const dirtyRef = useRef(dirty);
+  dirtyRef.current = dirty;
+  useEffect(() => {
+    // the saved profile changed outside this view (first load from storage): follow it unless editing
+    if (profile !== last.current) {
+      last.current = profile;
+      setDraft((d) => (JSON.stringify(d) === JSON.stringify(emptyResume()) || !dirtyRef.current ? profile : d));
+    }
+  }, [profile]);
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+  const save = () => {
+    last.current = draft;
+    setProfile(draft);
+    setSavedAt(Date.now());
+  };
+  const ready = !!(draft.basics.name && (draft.work.length || draft.skills.some((g) => g.keywords.length)));
   const [status, setStatus] = useState<string | null>(null);
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasted, setPasted] = useState("");
@@ -24,22 +51,22 @@ export function ProfileView({ profile, setProfile }: Props) {
       const res = await fetch("/cvtuner/api/import", { method: "POST", body });
       const data = (await res.json()) as { resume?: Resume; error?: string };
       if (!res.ok || !data.resume) throw new Error(data.error ?? "Import failed");
-      setProfile(data.resume);
-      setStatus(`Imported ${file.name}. Check each section below. Automatic parsing is not perfect.`);
+      setDraft(data.resume);
+      setStatus(`Imported ${file.name}. Check each section below, then press Save profile. Automatic parsing is not perfect.`);
     } catch (e) {
       setStatus((e as Error).message);
     }
   };
 
   const set = (fn: (r: Resume) => void) =>
-    setProfile((prev) => {
+    setDraft((prev) => {
       const next = structuredClone(prev);
       fn(next);
       return next;
     });
 
   return (
-    <div className="mx-auto grid max-w-5xl gap-6">
+    <div className="mx-auto grid max-w-5xl gap-6 pb-20">
       <Card
         title="Your base resume"
         actions={
@@ -50,7 +77,7 @@ export function ProfileView({ profile, setProfile }: Props) {
             <Button onClick={() => setPasteOpen((v) => !v)} aria-expanded={pasteOpen}>
               Paste text
             </Button>
-            <Button variant="ghost" onClick={() => setProfile(sampleResume())}>
+            <Button variant="ghost" onClick={() => setDraft(sampleResume())}>
               Load sample
             </Button>
           </>
@@ -68,7 +95,8 @@ export function ProfileView({ profile, setProfile }: Props) {
           }}
         />
         <p className="text-muted max-w-[65ch] text-sm">
-          This is the master copy. CVTuner never changes it when tuning. Each job gets its own version.
+          Step 1: upload your resume, check it, and save it. This is the master copy: CVTuner never changes it when tuning, each job gets its own version. It is saved
+          in this browser only, so use Export to keep a backup or move it to another device.
         </p>
         <p className="help mt-2" role="status">
           {status}
@@ -86,10 +114,10 @@ export function ProfileView({ profile, setProfile }: Props) {
               <Button
                 disabled={!pasted.trim()}
                 onClick={() => {
-                  setProfile(parseResumeText(pasted));
+                  setDraft(parseResumeText(pasted));
                   setPasteOpen(false);
                   setPasted("");
-                  setStatus("Imported pasted text. Check each section below.");
+                  setStatus("Imported pasted text. Check each section below, then press Save profile.");
                 }}
               >
                 Import text
@@ -100,27 +128,27 @@ export function ProfileView({ profile, setProfile }: Props) {
         <div className="border-rule mt-4 flex flex-wrap justify-between gap-2 border-t pt-4">
           <Button
             variant="ghost"
-            onClick={() => downloadBlob(new Blob([JSON.stringify(profile, null, 2)], { type: "application/json" }), "cvtuner-profile.json")}
+            onClick={() => downloadBlob(new Blob([JSON.stringify(draft, null, 2)], { type: "application/json" }), "cvtuner-draft.json")}
           >
             Export JSON
           </Button>
-          <Button variant="danger" onClick={() => confirm("Clear your whole profile?") && setProfile(emptyResume())}>
+          <Button variant="danger" onClick={() => confirm("Clear your whole profile?") && setDraft(emptyResume())}>
             Clear profile
           </Button>
         </div>
       </Card>
 
       <Card title="Basics">
-        <PhotoField image={profile.basics.image} onChange={(img) => set((r) => void (r.basics.image = img))} />
+        <PhotoField image={draft.basics.image} onChange={(img) => set((r) => void (r.basics.image = img))} />
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Full name" value={profile.basics.name} onChange={(v) => set((r) => void (r.basics.name = v))} autoComplete="name" />
-          <Field label="Headline" value={profile.basics.label} onChange={(v) => set((r) => void (r.basics.label = v))} placeholder="e.g. Staff Nurse, Data Analyst" />
-          <Field label="Email" value={profile.basics.email} onChange={(v) => set((r) => void (r.basics.email = v))} type="email" autoComplete="email" />
-          <Field label="Phone" value={profile.basics.phone} onChange={(v) => set((r) => void (r.basics.phone = v))} type="tel" autoComplete="tel" />
-          <Field label="Location" value={profile.basics.location} onChange={(v) => set((r) => void (r.basics.location = v))} autoComplete="address-level2" />
-          <Field label="Website / LinkedIn" value={profile.basics.url} onChange={(v) => set((r) => void (r.basics.url = v))} type="url" autoComplete="url" />
+          <Field label="Full name" value={draft.basics.name} onChange={(v) => set((r) => void (r.basics.name = v))} autoComplete="name" />
+          <Field label="Headline" value={draft.basics.label} onChange={(v) => set((r) => void (r.basics.label = v))} placeholder="e.g. Staff Nurse, Data Analyst" />
+          <Field label="Email" value={draft.basics.email} onChange={(v) => set((r) => void (r.basics.email = v))} type="email" autoComplete="email" />
+          <Field label="Phone" value={draft.basics.phone} onChange={(v) => set((r) => void (r.basics.phone = v))} type="tel" autoComplete="tel" />
+          <Field label="Location" value={draft.basics.location} onChange={(v) => set((r) => void (r.basics.location = v))} autoComplete="address-level2" />
+          <Field label="Website / LinkedIn" value={draft.basics.url} onChange={(v) => set((r) => void (r.basics.url = v))} type="url" autoComplete="url" />
         </div>
-        <Area label="Summary" value={profile.basics.summary} onChange={(v) => set((r) => void (r.basics.summary = v))} className="mt-3" />
+        <Area label="Summary" value={draft.basics.summary} onChange={(v) => set((r) => void (r.basics.summary = v))} className="mt-3" />
       </Card>
 
       <Card
@@ -128,8 +156,8 @@ export function ProfileView({ profile, setProfile }: Props) {
         actions={<Button onClick={() => set((r) => void r.work.unshift({ id: newId("work"), name: "", position: "", highlights: [] }))}>Add role</Button>}
       >
         <div className="flex flex-col">
-          {profile.work.length === 0 ? <p className="text-muted text-sm">No roles yet.</p> : null}
-          {profile.work.map((w, i) => (
+          {draft.work.length === 0 ? <p className="text-muted text-sm">No roles yet.</p> : null}
+          {draft.work.map((w, i) => (
             <Entry
               key={w.id}
               onRemove={() => set((r) => void r.work.splice(i, 1))}
@@ -151,10 +179,10 @@ export function ProfileView({ profile, setProfile }: Props) {
       </Card>
 
       <Card title="Skills">
-        {(profile.skills.length ? profile.skills : [{ id: "new", name: "Skills", keywords: [] }]).map((g, i) => (
+        {(draft.skills.length ? draft.skills : [{ id: "new", name: "Skills", keywords: [] }]).map((g, i) => (
           <Area
             key={g.id}
-            label={profile.skills.length > 1 ? g.name : "Skills (comma separated)"}
+            label={draft.skills.length > 1 ? g.name : "Skills (comma separated)"}
             value={g.keywords.join(", ")}
             onChange={(v) =>
               set((r) => {
@@ -172,8 +200,8 @@ export function ProfileView({ profile, setProfile }: Props) {
         actions={<Button onClick={() => set((r) => void r.education.push({ id: newId("edu"), institution: "" } as Education))}>Add</Button>}
       >
         <div className="flex flex-col">
-          {profile.education.length === 0 ? <p className="text-muted text-sm">Nothing yet.</p> : null}
-          {profile.education.map((e, i) => (
+          {draft.education.length === 0 ? <p className="text-muted text-sm">Nothing yet.</p> : null}
+          {draft.education.map((e, i) => (
             <Entry key={e.id} onRemove={() => set((r) => void r.education.splice(i, 1))}>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Institution" value={e.institution} onChange={(v) => set((r) => void (r.education[i]!.institution = v))} />
@@ -191,8 +219,8 @@ export function ProfileView({ profile, setProfile }: Props) {
         actions={<Button onClick={() => set((r) => void r.projects.push({ id: newId("proj"), name: "", highlights: [] } as Project))}>Add</Button>}
       >
         <div className="flex flex-col">
-          {profile.projects.length === 0 ? <p className="text-muted text-sm">Optional.</p> : null}
-          {profile.projects.map((p, i) => (
+          {draft.projects.length === 0 ? <p className="text-muted text-sm">Optional.</p> : null}
+          {draft.projects.map((p, i) => (
             <Entry key={p.id} onRemove={() => set((r) => void r.projects.splice(i, 1))}>
               <Field label="Name" value={p.name} onChange={(v) => set((r) => void (r.projects[i]!.name = v))} />
               <Area label="Description" value={p.description} onChange={(v) => set((r) => void (r.projects[i]!.description = v))} />
@@ -203,13 +231,50 @@ export function ProfileView({ profile, setProfile }: Props) {
       </Card>
 
       <Card title="Certifications">
-        <Lines label="One per line" value={profile.certificates} onChange={(v) => set((r) => void (r.certificates = v))} />
+        <Lines label="One per line" value={draft.certificates} onChange={(v) => set((r) => void (r.certificates = v))} />
       </Card>
 
       <Card title="Languages">
-        <Lines label="One per line, e.g. English (fluent)" value={profile.languages} onChange={(v) => set((r) => void (r.languages = v))} />
+        <Lines label="One per line, e.g. English (fluent)" value={draft.languages} onChange={(v) => set((r) => void (r.languages = v))} />
       </Card>
-    </div>
+          {/* the save bar: always in reach, above the phone tab bar */}
+      <div className="bg-plate fixed inset-x-0 bottom-[calc(48px+env(safe-area-inset-bottom))] z-[150] border-t-2 border-ink sm:bottom-0">
+        <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
+          <p className="text-sm" role="status">
+            {dirty ? (
+              <span className="text-warn font-medium">Unsaved changes</span>
+            ) : savedAt ? (
+              <>
+                Saved in this browser at <span className="code">{new Date(savedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+              </>
+            ) : ready ? (
+              <span className="text-muted">Profile saved in this browser</span>
+            ) : (
+              <span className="text-muted">Upload or fill in your resume, then save it</span>
+            )}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {dirty ? (
+              <>
+                <Button variant="ghost" onClick={() => setDraft(profile)}>
+                  Discard
+                </Button>
+                <Button variant="primary" onClick={save}>
+                  Save profile
+                </Button>
+              </>
+            ) : ready ? (
+              <>
+                <Button onClick={() => onNext("tune")}>Tune for a job</Button>
+                <Button variant="primary" onClick={() => onNext("jobs")}>
+                  Find matching jobs
+                </Button>
+              </>
+            ) : null}
+          </div>
+        </div>
+      </div>
+</div>
   );
 }
 

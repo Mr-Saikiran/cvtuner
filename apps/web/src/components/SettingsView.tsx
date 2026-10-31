@@ -127,6 +127,8 @@ export function SettingsView({ settings, setSettings }: { settings: Settings; se
 
       <AiCard settings={settings} setSettings={setSettings} />
 
+      <SearchCard settings={settings} setSettings={setSettings} />
+
       <Card title="Your data">
         <p className="text-muted text-sm">
           Your profile, saved versions, watched boards and API keys are stored only in this browser. Imported files are read once and not kept. When you use a
@@ -134,6 +136,59 @@ export function SettingsView({ settings, setSettings }: { settings: Settings; se
         </p>
       </Card>
     </div>
+  );
+}
+
+function SearchCard({ settings, setSettings }: { settings: Settings; setSettings: (s: Settings) => void }) {
+  const k = settings.search;
+  const set = (patch: Partial<Settings["search"]>) => setSettings({ ...settings, search: { ...k, ...patch } });
+  return (
+    <Card title="Job search">
+      <div className="flex flex-col">
+        <Row label="Search automatically" hint="When you open Jobs and you're online, CVTuner searches for your headline and city, at most every 6 hours.">
+          <Segmented
+            label="Search automatically"
+            value={k.auto ? "on" : "off"}
+            onChange={(v) => set({ auto: v === "on" })}
+            options={[
+              { value: "on", label: "On" },
+              { value: "off", label: "Off" },
+            ]}
+          />
+        </Row>
+      </div>
+      <p className="text-muted border-rule mt-2 border-t pt-4 text-sm">
+        Remotive and Jobicy (remote roles) work without a key. LinkedIn, Naukri and Indeed don&apos;t let apps read their sites, but their listings reach CVTuner legally
+        through these free APIs:
+      </p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1">
+          <span className="field-label flex justify-between">
+            JSearch key (RapidAPI): LinkedIn, Indeed, Naukri, Glassdoor
+            <a href="https://rapidapi.com/letscrape-6bRBa3QguO5/api/jsearch" target="_blank" rel="noreferrer">
+              Get a free key ↗
+            </a>
+          </span>
+          <input className="field font-mono" type="password" autoComplete="off" value={k.rapidApiKey} onChange={(e) => set({ rapidApiKey: e.target.value.trim() })} placeholder="RapidAPI key" />
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="flex flex-col gap-1">
+            <span className="field-label flex justify-between">
+              Adzuna app ID
+              <a href="https://developer.adzuna.com/signup" target="_blank" rel="noreferrer">
+                Free ↗
+              </a>
+            </span>
+            <input className="field font-mono" autoComplete="off" value={k.adzunaId} onChange={(e) => set({ adzunaId: e.target.value.trim() })} placeholder="app_id" />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="field-label">Adzuna app key</span>
+            <input className="field font-mono" type="password" autoComplete="off" value={k.adzunaKey} onChange={(e) => set({ adzunaKey: e.target.value.trim() })} placeholder="app_key" />
+          </label>
+        </div>
+      </div>
+      <p className="text-muted mt-3 text-xs">Keys are saved in this browser only and sent just with your searches.</p>
+    </Card>
   );
 }
 

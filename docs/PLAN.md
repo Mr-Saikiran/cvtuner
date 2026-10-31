@@ -166,6 +166,8 @@ cvtuner/                      (monorepo: pnpm + Turborepo)
 - Auto or manual skill confirmation. Auto needs evidence from the resume.
 - JD skills placed first, bold metrics, and AI metric placeholders.
 
+- Profile is the first tab, with an explicit Save. The Jobs tab searches automatically from the profile: Remotive and Jobicy free, JSearch and Adzuna with free keys, plus pre-filled LinkedIn, Naukri, Indeed and Google Jobs searches.
+
 **Not built yet**
 - **Accounts and cloud sync.** These need a database (for example Neon or Supabase through the Vercel Marketplace). Until then, data stays in the browser, and Profile offers JSON export.
 - **Native iOS and Android apps in the stores.** The installable web app (PWA) plus the Android share target covers most of this. iOS has no web share target.

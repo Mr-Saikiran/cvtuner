@@ -15,7 +15,13 @@ Live at **[techswitch.in/cvtuner](https://techswitch.in/cvtuner)**.
 - **8 templates.** Four are ATS-safe single column: Simple, Modern, Corporate, Precision. Four are designed: Header band, Clear (photo and sidebar), Balanced (dark sidebar and photo), Two column. The Word export of every template is single column.
 - **Cover letter** from the rule engine or AI, exported as PDF or Word.
 - **Document languages:** English, Spanish, French, German, Portuguese, Italian and Dutch.
-- **Jobs tab.** Watch company boards and see open roles ranked by match, with alerts for new matches.
+- **Profile comes first.** Upload or paste your resume, check it, then press **Save profile**. It is saved in this browser; use Export for a backup. From there, go to **Find matching jobs** or **Tune for a job**.
+- **Jobs tab, searched automatically.** When you're online, CVTuner searches for your headline and city on its own, at most every 6 hours, and ranks each job by how well it matches your profile.
+  - **No-key sources:** Remotive and Jobicy (remote roles).
+  - **Free key, JSearch (RapidAPI):** LinkedIn, Indeed, Naukri and Glassdoor listings, legally, through Google for Jobs.
+  - **Free key, Adzuna:** local jobs in India and 15 more countries.
+  - **LinkedIn, Naukri, Indeed and Google Jobs buttons** open those sites' own search, pre-filled. They don't allow apps to read their pages, so send a job back with Share or the extension.
+- **Watched company boards** (Greenhouse, Lever, Ashby, SmartRecruiters, Workable) with alerts for new matches.
 - **Tracker.** Saved versions are also an application tracker: status, applied date, notes and a funnel.
 
 ## For recruiters

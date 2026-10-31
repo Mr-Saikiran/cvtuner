@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { isProfileEmpty, useJobs, useMode, useProfile, useSettings, type Mode, type SavedJob } from "@/lib/store";
+import { useEffect, useState } from "react";
+import { INCOMING_KEY, isProfileEmpty, useJobs, useMode, useProfile, useSettings, type Mode, type SavedJob } from "@/lib/store";
 import { BoardsView } from "./BoardsView";
+import { JobSearch } from "./JobSearch";
 import { HistoryView } from "./HistoryView";
 import { ProfileView } from "./ProfileView";
 import { ScreenView } from "./ScreenView";
@@ -12,8 +13,8 @@ import { TailorView } from "./TailorView";
 type Tab = "tune" | "profile" | "jobs" | "saved" | "screen" | "settings";
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "tune", label: "Tune" },
   { id: "profile", label: "Profile" },
+  { id: "tune", label: "Tune" },
   { id: "jobs", label: "Jobs" },
   { id: "saved", label: "Tracker" },
   { id: "screen", label: "Screen" },
@@ -31,8 +32,18 @@ export function App() {
   const [jobs, setJobs] = useJobs();
   const [settings, setSettings] = useSettings();
   const [mode, setMode] = useMode();
-  const [tab, setTab] = useState<Tab>("tune");
+  // the profile comes first: upload it, then tune and search jobs from it
+  const [tab, setTab] = useState<Tab>("profile");
   const [openJob, setOpenJob] = useState<SavedJob | null>(null);
+
+  // a job shared in from another app or the extension opens straight on Tune
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(INCOMING_KEY)) setTab("tune");
+    } catch {
+      // storage blocked
+    }
+  }, []);
 
   const needsProfile = profileReady && isProfileEmpty(profile);
 
@@ -104,7 +115,10 @@ export function App() {
             }}
           />
         )}
-        {tab === "profile" && <ProfileView profile={profile} setProfile={setProfile} />}
+        {/* kept mounted so an unsaved draft survives switching tabs */}
+        <div hidden={tab !== "profile"}>
+          <ProfileView profile={profile} setProfile={setProfile} onNext={(next) => setTab(next)} />
+        </div>
         {tab === "saved" && (
           <HistoryView
             jobs={jobs}
@@ -117,13 +131,24 @@ export function App() {
           />
         )}
         {tab === "jobs" && (
-          <BoardsView
-            profile={profile}
-            onTune={() => {
-              setOpenJob(null);
-              setTab("tune");
-            }}
-          />
+          <div className="flex flex-col gap-8">
+            <JobSearch
+              profile={profile}
+              settings={settings}
+              onOpenSettings={() => setTab("settings")}
+              onTune={() => {
+                setOpenJob(null);
+                setTab("tune");
+              }}
+            />
+            <BoardsView
+              profile={profile}
+              onTune={() => {
+                setOpenJob(null);
+                setTab("tune");
+              }}
+            />
+          </div>
         )}
         {tab === "settings" && <SettingsView settings={settings} setSettings={setSettings} />}
         {/* kept mounted so uploaded candidates survive tab switches */}
