@@ -7,8 +7,8 @@ const MAX_BYTES = 5 * 1024 * 1024;
 
 /** Turns an uploaded resume (PDF, DOCX, TXT/MD or JSON Resume) into the CVTuner schema. Nothing is stored. */
 export async function POST(req: Request) {
-  const form = await req.formData();
-  const file = form.get("file");
+  const form = await req.formData().catch(() => null);
+  const file = form?.get("file");
   if (!(file instanceof File)) return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
   if (file.size > MAX_BYTES) return NextResponse.json({ error: "File is larger than 5 MB" }, { status: 413 });
 
