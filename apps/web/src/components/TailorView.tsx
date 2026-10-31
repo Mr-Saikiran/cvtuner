@@ -92,7 +92,7 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave, on
 
   // text or a link shared from another app / the browser extension
   useEffect(() => {
-    let incoming: { text?: string; url?: string; title?: string } | null = null;
+    let incoming: { text?: string; url?: string; title?: string; company?: string; source?: string; action?: string } | null = null;
     try {
       incoming = JSON.parse(localStorage.getItem(INCOMING_KEY) ?? "null");
       localStorage.removeItem(INCOMING_KEY);
@@ -103,9 +103,12 @@ export function TailorView({ profile, settings, setSettings, openJob, onSave, on
     const text = incoming.text?.trim() ?? "";
     const url = incoming.url ?? text.match(/https?:\/\/\S+/)?.[0];
     if (text.length > 200) {
-      setDraft(text);
-      setLinkMeta({ url, title: incoming.title });
+      // whole-page text (a fallback when a site's markup changed) is trimmed to the description
+      const cleaned = cleanCopiedJob(text);
+      setDraft(cleaned.cleaned ? cleaned.text : text);
+      setLinkMeta({ url, title: incoming.title || undefined, company: incoming.company || undefined });
       setMode("edit");
+      if (incoming.source) setLinkState({ busy: false, note: `Brought in from ${incoming.source}. Check it, then tune.` });
     } else if (url) {
       setLink(url);
       void loadLink(url);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ExtensionCard } from "./ExtensionCard";
 import { Button } from "./ui";
 
 /** Reads the job description on a portal page and sends it to CVTuner, entirely in the user's browser. */
@@ -57,7 +58,8 @@ export function PortalHelp({ url, onText, hasJsearch, onOpenSettings }: { url: s
         </li>
       </ol>
       {msg ? <p className="text-warn mt-2 text-xs">{msg}</p> : null}
-      <div className="border-rule mt-3 flex flex-col gap-1 border-t pt-3 text-xs">
+      <div className="border-rule mt-3 flex flex-col gap-2 border-t pt-3 text-xs">
+        <ExtensionCard compact />
         <p>
           <span className="font-medium">Faster next time:</span> drag{" "}
           <a ref={bm} className="btn" onClick={(e) => e.preventDefault()} title="Drag me to your bookmarks bar">

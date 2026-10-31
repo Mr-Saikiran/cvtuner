@@ -23,6 +23,7 @@ Live at **[techswitch.in/cvtuner](https://techswitch.in/cvtuner)**.
   - **Free key, JSearch (RapidAPI):** LinkedIn, Indeed, Naukri and Glassdoor listings, legally, through Google for Jobs.
   - **Free key, Adzuna:** local jobs in India and 15 more countries.
   - **LinkedIn, Naukri, Indeed and Google Jobs buttons** open those sites' own search, pre-filled. They don't allow apps to read their pages, so send a job back with Share or the extension.
+- **LinkedIn, Naukri and Indeed integration** through the CVTuner browser extension (download it from the Jobs tab). Every job page on those sites gets **Tune with CVTuner** and **Save to tracker** buttons. They bring in the title, company, location, full description and (Naukri) key skills from the page you are viewing, in your own browser. Those sites don't allow servers to read their pages, so this is the way that works and stays within their rules.
 - **Watched company boards** (Greenhouse, Lever, Ashby, SmartRecruiters, Workable) with alerts for new matches.
 - **Tracker.** Saved versions are also an application tracker: status, applied date, notes and a funnel.
 

@@ -12,7 +12,7 @@ export default function SharePage() {
     const q = new URLSearchParams(window.location.search);
     const h = new URLSearchParams(window.location.hash.slice(1));
     const pick = (k: string) => h.get(k) ?? q.get(k) ?? undefined;
-    const payload = { text: pick("text"), url: pick("url"), title: pick("title") };
+    const payload = { text: pick("text"), url: pick("url"), title: pick("title"), company: pick("company"), source: pick("source"), action: pick("action") };
     try {
       if (payload.text || payload.url) localStorage.setItem(INCOMING_KEY, JSON.stringify(payload));
     } catch {

@@ -1,8 +1,10 @@
 "use client";
 
+import { matchScore, newId } from "@cvtuner/core";
 import { useEffect, useState } from "react";
 import { INCOMING_KEY, isProfileEmpty, useJobs, useMode, useProfile, useSettings, type Mode, type SavedJob } from "@/lib/store";
 import { BoardsView } from "./BoardsView";
+import { ExtensionCard } from "./ExtensionCard";
 import { JobSearch } from "./JobSearch";
 import { HistoryView } from "./HistoryView";
 import { ProfileView } from "./ProfileView";
@@ -36,14 +38,40 @@ export function App() {
   const [tab, setTab] = useState<Tab>("profile");
   const [openJob, setOpenJob] = useState<SavedJob | null>(null);
 
-  // a job shared in from another app or the extension opens straight on Tune
+  const [notice, setNotice] = useState<string | null>(null);
+
+  // a job shared in from another app or the extension opens on Tune; "Save to tracker" files it instead
   useEffect(() => {
+    if (!profileReady) return;
     try {
-      if (localStorage.getItem(INCOMING_KEY)) setTab("tune");
+      const raw = localStorage.getItem(INCOMING_KEY);
+      if (!raw) return;
+      const inc = JSON.parse(raw) as { text?: string; url?: string; title?: string; company?: string; source?: string; action?: string };
+      if (inc.action === "save" && inc.text) {
+        localStorage.removeItem(INCOMING_KEY);
+        const now = Date.now();
+        const job: SavedJob = {
+          id: newId("job"),
+          title: inc.title || "Untitled role",
+          company: inc.company || undefined,
+          url: inc.url,
+          jd: inc.text,
+          createdAt: now,
+          updatedAt: now,
+          confirmedSkills: [],
+          suggestions: [],
+          score: matchScore(profile, inc.text).score,
+          status: "saved",
+        };
+        setJobs((prev) => (prev.some((j) => j.url && j.url === job.url) ? prev : [job, ...prev]));
+        setNotice(`Saved “${job.title}”${inc.source ? ` from ${inc.source}` : ""} to your tracker.`);
+        setTab("saved");
+      } else setTab("tune");
     } catch {
       // storage blocked
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileReady]);
 
   const needsProfile = profileReady && isProfileEmpty(profile);
 
@@ -101,6 +129,17 @@ export function App() {
         </div>
       ) : null}
 
+      {notice ? (
+        <div className="bg-accent-soft border-b border-rule" role="status">
+          <div className="mx-auto flex w-full max-w-[1440px] items-center justify-between gap-3 px-4 py-2 text-sm sm:px-6">
+            <span>{notice}</span>
+            <button type="button" className="btn btn--quiet" onClick={() => setNotice(null)}>
+              Dismiss
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <main id="main" className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-6 sm:px-6 sm:py-8">
         {tab === "tune" && (
           <TailorView
@@ -132,6 +171,7 @@ export function App() {
         )}
         {tab === "jobs" && (
           <div className="flex flex-col gap-8">
+            <ExtensionCard />
             <JobSearch
               profile={profile}
               settings={settings}

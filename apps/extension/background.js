@@ -15,7 +15,23 @@ function grabPage() {
   return main.innerText;
 }
 
+/** On LinkedIn, Naukri and Indeed the content script knows the job's fields; ask it first. */
+async function fromContentScript(tab) {
+  try {
+    const job = await chrome.tabs.sendMessage(tab.id, { type: "cvtuner:job" });
+    if (job && job.hasDescription) {
+      const hash = new URLSearchParams({ text: job.text, url: job.url, title: job.title || "", company: job.company || "", source: "extension" });
+      chrome.tabs.create({ url: `${APP}#${hash.toString()}` });
+      return true;
+    }
+  } catch {
+    // no content script on this page
+  }
+  return false;
+}
+
 chrome.action.onClicked.addListener(async (tab) => {
+  if (await fromContentScript(tab)) return;
   try {
     const [res] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: grabPage });
     open(res && res.result, tab.url, tab.title);
