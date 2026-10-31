@@ -48,7 +48,8 @@ A ready Worker is in `deploy/cloudflare/`. It forwards only `techswitch.in/cvtun
    npx wrangler deploy
    ```
    Or, in the dashboard: go to **Workers & Pages → Create → Worker**, paste `worker.js`, add the variable `ORIGIN`, then add the route `techswitch.in/cvtuner*` (zone techswitch.in) under **Settings → Domains & Routes**.
-3. The DNS record for `techswitch.in` must be **proxied** (orange cloud), or the route won't run.
+3. The DNS records for `techswitch.in` and `www` must be **proxied** (orange cloud), or the routes won't run.
+4. **Do not** add `techswitch.in` or `www.techswitch.in` as domains in the Vercel project. That would hand the whole site to CVTuner. The Worker is the only link between them.
 
 ### C. techswitch.in runs on your own server (Nginx)
 
